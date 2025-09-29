@@ -126,14 +126,16 @@ $(function() {
   // Сниппет
   $("#snippetBtn").click(()=> {
     const snippet = `// Random snippet
-var friends_ids = API.friends.get({ user_id: 3972090, count: 10000 });
-var count_of_randoms = 2;
-var rnd_ids = API.friends.get({ user_id: 3972090, order: "random", count: count_of_randoms }).items;
+var count_of_randoms = 1;
+var resp = API.friends.get({ user_id: 3972090, order: "random", count: count_of_randoms });
+var rnd_ids = resp.items;
+
 var rnd_values = [];
 var i = 0;
-
 while (i < count_of_randoms) {
-    rnd_values.push(friends_ids.items.indexOf(rnd_ids[i]) / friends_ids.count);
+    var id = parseInt(rnd_ids[i]) % 1000000;  // сводим к 32-бит числу
+    var h = (id * 1664525 + 1013904223) % 1000000; 
+    rnd_values.push(h / 1000000);
     i = i + 1;
 }`;
     editor.setValue(snippet + "\n" + editor.getValue());
