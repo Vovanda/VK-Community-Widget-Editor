@@ -16,17 +16,21 @@ function addError(msg) {
   $container.prepend($details);
 }
 
-// Глобальная функция для VK.init
-function onReady() {
-  // VK API ошибки
-  VK.addCallback('onAppWidgetPreviewFail', e => addError('VK Preview Fail: ' + JSON.stringify(e)));
-  VK.addCallback('onAppWidgetPreviewCancel', e => console.log('VK Preview Cancel!'));
-  VK.addCallback('onAppWidgetPreviewSuccess', e => console.log('VK Preview Success!', e));
+function setupVkCallbacks() {
+  VK.addCallback('onAppWidgetPreviewFail', e => {
+    addError('VK Preview Fail: ' + JSON.stringify(e));
+  });
+}
 
+// Глобальная функция для VK.init
+function onReady() {  
+  setupVkCallbacks();
+  
   // Предпросмотр виджета
-  $('#previewBtn').click(() => {
+  $('#previewBtn').off('click').on('click', () => {
+    const code = editor.getValue();
     try {
-      VK.callMethod("showAppWidgetPreviewBox", widgetType, editor.getValue());
+      VK.callMethod("showAppWidgetPreviewBox", widgetType, code);      
     } catch(e) {
       console.error("VK JS Exception (не в лог):", e);
     }
