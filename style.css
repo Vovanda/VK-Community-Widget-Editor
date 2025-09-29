@@ -1,0 +1,180 @@
+/* Базовые стили */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #ffffff; /* фон белый */
+  margin: 0;
+  padding: 0;
+  color: #003b46; /* глубокая вода */
+}
+
+.container {
+  max-width: 900px;
+  margin: 15px auto;
+  padding: 20px;
+  background: #c4dfe6; /* морская пена */
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+}
+
+.header h1 {
+  font-weight: 700;
+  color: #66a5ad; /* волна */
+  font-size: 1em;
+  text-align: center;
+  margin-bottom: 20px;
+  margin-top: 0px;
+}
+
+/* Тулбар */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 15px;
+  background: #66a5ad; /* волна */
+  border-radius: 8px 8px 0 0;
+  flex-wrap: wrap;
+}
+
+.toolbar-left,
+.toolbar-center,
+.toolbar-right {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.toolbar-left button,
+.toolbar-center button,
+.toolbar-right button,
+select#widget-type {
+  flex: 1 1 auto;
+  text-align: center;
+  background: #07575b; /* океан */
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.toolbar-left button:hover,
+.toolbar-center button:hover,
+.toolbar-right button:hover,
+select#widget-type:hover {
+  background: #0a7d80; /* насыщенный океан */
+}
+
+/* Адаптив для мобильного */
+@media (max-width: 600px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-left,
+  .toolbar-center,
+  .toolbar-right {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .toolbar-left button,
+  .toolbar-center button,
+  .toolbar-right button,
+  select#widget-type {
+    flex: 1;
+    margin: 0 3px;
+  }
+}
+
+/* Редактор и textarea */
+#editor {
+  height: 350px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 2px solid #003b46; /* глубокая вода */
+  padding: 5px;
+}
+
+/* Блок ошибок */
+.error-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f2cf59; /* пастельно-жёлтый */
+  border: 1px solid #f8ca9d;
+  padding: 5px 10px;
+  overflow-x: auto;
+}
+
+.error-log {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.error-log details {
+  background: #f8ca9d;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #003b46;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.error-log details:hover {
+  background: #f2cf59;
+}
+
+.error-bar button {
+  flex-shrink: 0;
+  background: #ff0000;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 1.2em;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ссылки и подсказки */
+.links, .hint {
+  margin-top: 15px;
+  font-size: 0.9em;
+}
+
+.links a, .hint a {
+  color: #003b46;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.links a:hover, .hint a:hover {
+  text-decoration: underline;
+}
+.creator {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.85em;
+  color: #003b46; /* глубокая вода */
+}
+
+.creator a {
+  color: #003b46;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.creator a:hover {
+  text-decoration: underline;
+}
