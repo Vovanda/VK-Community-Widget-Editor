@@ -4,7 +4,17 @@ const VK_API_VERSION = "5.131";
 // Право app_widget: VK спрашивает у администратора, можно ли приложению обновлять виджет.
 const WIDGET_PERMISSION = 64;
 
-const STORAGE_KEY = "vk_widget_editor_v2";
+// Код хранится по сообществу: у каждой группы свой виджет, а общий слот на тип
+// подсовывал в одну группу скрипт другой. id группы VK передаёт в адресе фрейма:
+// group_id у iframe-приложений, vk_group_id у мини-приложений; 0 — открыто не из группы.
+function readGroupId() {
+  const params = new URLSearchParams(location.search);
+  const id = params.get("group_id") ?? params.get("vk_group_id");
+  return id && id !== "0" ? id : null;
+}
+const GROUP_ID = readGroupId();
+const SHARED_STORAGE_KEY = "vk_widget_editor_v2";
+const STORAGE_KEY = GROUP_ID ? `${SHARED_STORAGE_KEY}:group:${GROUP_ID}` : SHARED_STORAGE_KEY;
 // Прежний формат хранил копию кода на каждое нажатие клавиши. Берём из него последнюю
 // версию, а сам ключ не трогаем: там вся история, ранние скрипты могут жить только в ней.
 const LEGACY_STORAGE_KEY = "vk_widget_editor_state";
@@ -67,8 +77,17 @@ function migrateLegacyState() {
   return { widgetType: legacy?.widgetType, code };
 }
 
+// У группы ещё нет своего кода: берём общий слот, а без него — старую историю.
+// Там мог лежать скрипт другой группы, поэтому запуск об этом предупредит.
+let inheritedCode = false;
+function inheritState() {
+  const inherited = (GROUP_ID && readStorage(SHARED_STORAGE_KEY)) ?? migrateLegacyState();
+  inheritedCode = Boolean(GROUP_ID) && Object.keys(inherited.code ?? {}).length > 0;
+  return inherited;
+}
+
 function loadState() {
-  const state = readStorage(STORAGE_KEY) ?? migrateLegacyState();
+  const state = readStorage(STORAGE_KEY) ?? inheritState();
   if (!(state.widgetType in WIDGET_TYPES)) state.widgetType = "list";
   state.code ??= {};
   return state;
@@ -201,7 +220,7 @@ function onVkReady() {
     logMessage("VK не показал предпросмотр: " + JSON.stringify(event)));
   previewBtn.disabled = false;
   permissionBtn.disabled = false;
-  vkStatus.textContent = "Подключено к VK";
+  vkStatus.textContent = GROUP_ID ? "Подключено к VK, сообщество " + GROUP_ID : "Подключено к VK";
 }
 
 function connectVk() {
@@ -243,4 +262,7 @@ fillTypeSelect();
 createEditor();
 bindControls();
 updateHistoryButtons();
+if (inheritedCode) {
+  logMessage("У этого сообщества ещё не было своего кода: взят общий, сохранённый до разделения по группам. Он мог быть от другой группы, проверь перед установкой.");
+}
 connectVk();

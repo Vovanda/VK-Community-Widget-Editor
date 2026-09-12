@@ -30,12 +30,12 @@ const browser = await chromium.launch(process.env.SMOKE_CHROME ? { executablePat
 
 // before и его аргумент уходят в addInitScript: он выполняется до скриптов страницы
 // при каждой загрузке, включая reload.
-async function openPage({ fakeVk, before, beforeArg, colorScheme = "light" } = {}) {
+async function openPage({ fakeVk, before, beforeArg, colorScheme = "light", url = URL } = {}) {
   const context = await browser.newContext({ viewport: { width: 1200, height: 900 }, colorScheme });
   const page = await context.newPage();
   page.on("pageerror", e => problems.push("ошибка скрипта: " + e.message));
   // cdnjs — это Cloudflare, в РФ его режут: всё стороннее обязано приезжать из vendor/.
-  await page.route(/cdnjs.cloudflare.com/, route => route.abort());
+  await page.route(/cdnjs\.cloudflare\.com/, route => route.abort());
   if (fakeVk) {
     // Скрипты VK подменяются заглушкой: init сразу успешен, вызовы копятся в __vkCalls.
     await page.route(/vk\.com\/js\/api\//, route => route.fulfill({
@@ -47,7 +47,7 @@ async function openPage({ fakeVk, before, beforeArg, colorScheme = "light" } = {
     }));
   }
   if (before) await page.addInitScript(before, beforeArg);
-  await page.goto(URL, { waitUntil: "load" });
+  await page.goto(url, { waitUntil: "load" });
   await page.waitForSelector(".CodeMirror");
   return page;
 }
@@ -149,6 +149,26 @@ check(await page.inputValue("#widgetType") === "list", "после миграц�
 check(await code(page) === "return 2;", "миграция взяла не последнюю версию кода");
 check(await page.evaluate(() => localStorage.getItem("vk_widget_editor_state")) === LEGACY,
   "старая история изменена или удалена");
+await page.context().close();
+
+/* ==== ХРАНЕНИЕ ПО ГРУППАМ ==== */
+// У каждой группы свой код: общий слот на тип подсовывал в одну группу скрипт другой.
+const openGroup = async id => {
+  await page.goto(URL + "?group_id=" + id, { waitUntil: "load" });
+  await page.waitForSelector(".CodeMirror");
+};
+page = await openPage({ url: URL + "?group_id=111", before: clearStorageOnce });
+await setCode(page, 'return {"title":"группа 111","rows":[]};');
+await openGroup(222);
+check(!(await code(page)).includes("группа 111"), "код группы 111 виден в группе 222");
+await openGroup(111);
+check((await code(page)).includes("группа 111"), "код группы 111 не сохранился");
+await page.evaluate(() => localStorage.setItem("vk_widget_editor_v2",
+  JSON.stringify({ widgetType: "list", code: { list: "return 42;" } })));
+await openGroup(333);
+check(await code(page) === "return 42;", "группа без своего кода не взяла общий");
+const inheritWarning = await page.evaluate(() => document.getElementById("logList").textContent);
+check(inheritWarning.includes("другой группы"), "нет предупреждения, что общий код мог быть от другой группы");
 await page.context().close();
 
 /* ==== ВНУТРИ VK (подделка) ==== */
