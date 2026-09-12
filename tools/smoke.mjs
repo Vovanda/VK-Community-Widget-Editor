@@ -110,10 +110,14 @@ check(await page.isDisabled("#undoBtn"), "«Отменить» в свежем �
 await page.selectOption("#widgetType", "list");
 check((await code(page)).includes("мой список"), "код списка потерялся при переключении типа");
 
+// «Шаблон» затирал бы готовый код, поэтому работает только на пустом.
+check(await page.isDisabled("#templateBtn"), "«Шаблон» активен при непустом коде");
+await setCode(page, "");
+check(!(await page.isDisabled("#templateBtn")), "«Шаблон» выключен при пустом коде");
 await page.click("#templateBtn");
-check((await code(page)).includes("Рестораны"), "«Шаблон» не заменил код");
+check((await code(page)).includes("Рестораны"), "«Шаблон» не поставил код в пустой редактор");
 await page.click("#undoBtn");
-check((await code(page)).includes("мой список"), "«Отменить» не вернула код после шаблона");
+check(await code(page) === "", "«Отменить» не вернула пустой код после шаблона");
 await page.click("#redoBtn");
 check((await code(page)).includes("Рестораны"), "«Повторить» не сработала");
 
@@ -123,9 +127,13 @@ await page.click("#undoBtn");
 
 /* ==== ФОРМА ==== */
 // Форма — второй вид того же кода: правка в форме меняет код, «Отменить» откатывает её.
-await page.click("#templateBtn");
+// Пустой код форма не показывает пустотой: предлагает начать с шаблона.
+await setCode(page, "");
 await page.click("#formTab");
 check(await page.isHidden(".CodeMirror"), "в форме виден редактор кода");
+check(await page.isVisible("#formView .form-start"), "в пустой форме нет «Начать с шаблона»");
+await page.click("#formView .form-start");
+check((await code(page)).includes("Рестораны"), "«Начать с шаблона» не поставила шаблон");
 const titleInput = page.locator('#formView [data-path="title"]');
 check(await titleInput.inputValue() === "Рестораны", "форма не подхватила заголовок из кода");
 await titleInput.fill("Кафе");
@@ -140,6 +148,7 @@ check(rowsAfterAdd === 2, "«Добавить» не добавил строку
 // Шаблон каждого типа открывается в форме без отказа и без нарушений схемы.
 for (const type of typeValues) {
   await page.selectOption("#widgetType", type);
+  await setCode(page, "");
   await page.click("#templateBtn");
   const formState = await page.evaluate(() => ({
     refusal: Boolean(document.querySelector("#formView .form-refusal")),
@@ -249,6 +258,7 @@ await page.goto(URL + "?group_id=777", { waitUntil: "load" });
 await page.waitForSelector(".CodeMirror", { state: "attached" });
 await page.selectOption("#widgetType", "list");
 await page.click("#formTab");
+await setCode(page, "");
 await page.click("#templateBtn");
 await page.selectOption('#formView .form-add-field[data-path="rows.0"]', "icon_id");
 check((await code(page)).includes('"icon_id": "club777"'), "новый icon_id не club777 при group_id=777");

@@ -457,6 +457,20 @@ function renderBlocksForm(container, type, code, blocks, writeCode, defaults) {
 }
 
 function renderForm(container, type, code, writeCode, defaults = {}) {
+  // Шаблон предлагается только пустому коду: поверх готового он бы всё затёр.
+  if (code.trim() === "") {
+    const start = el("button", "form-add form-start", "Начать с шаблона");
+    start.type = "button";
+    start.addEventListener("click", () => {
+      const template = widgetToCode(WIDGET_TYPES[type].template);
+      // Свой шаг истории: иначе быстрый ввод после шаблона склеился бы с ним,
+      // и «Отменить» сносила бы шаблон вместе с первой правкой.
+      writeCode(template, "template");
+      renderForm(container, type, template, writeCode, defaults);
+    });
+    container.replaceChildren(el("p", "form-refusal", "Код пуст."), start);
+    return;
+  }
   const widget = readSimpleWidget(code);
   if (widget) {
     renderWidgetForm(container, type, widget, writeCode, defaults);

@@ -430,6 +430,12 @@ a:focus-visible {
   cursor: not-allowed;
 }
 
+/* «Начать с шаблона» в пустой форме стоит слева, а не прижимается вправо, как «Добавить» в шапке списка. */
+.form-view > .form-start {
+  justify-self: start;
+  margin-left: 0;
+}
+
 /* Свёрнутые области и карточки: у summary с display: flex Chrome прячет родной
    треугольник, поэтому стрелка своя и поворачивается у раскрытых. */
 .form-block > summary,

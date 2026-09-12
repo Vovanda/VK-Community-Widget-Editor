@@ -121,10 +121,17 @@ function updateHistoryButtons() {
   redoBtn.disabled = !redo;
 }
 
+// «Шаблон» затирал бы готовый код одним нажатием, поэтому он предлагается только
+// пустому редактору. Сбросить к шаблону нарочно — очистить код, кнопка оживёт.
+function updateTemplateButton() {
+  templateBtn.disabled = editor.getValue().trim() !== "";
+}
+
 function onCodeChanged() {
   state.code[state.widgetType] = editor.getValue();
   saveState();
   updateHistoryButtons();
+  updateTemplateButton();
   // Код поменялся не из формы — отмена, шаблон, правка во вкладке «Код»: форма вычитывает его заново.
   if (state.view === "form" && !formWriting) refreshForm();
 }
@@ -134,6 +141,7 @@ function switchType(type) {
   editor.swapDoc(docFor(type));
   saveState();
   updateHistoryButtons();
+  updateTemplateButton();
   if (state.view === "form") refreshForm();
 }
 
@@ -154,10 +162,12 @@ function createEditor() {
 // CodeMirror склеивает такие правки, и «Отменить» откатывает ввод словами, а не по букве.
 let formWriting = false;
 
-function writeCodeFromForm(code) {
+// origin без «+» CodeMirror не склеивает с соседними правками: так форма пишет шаги,
+// которые должны отменяться отдельно, — например, вставку шаблона.
+function writeCodeFromForm(code, origin = "+form") {
   const doc = editor.getDoc();
   formWriting = true;
-  doc.replaceRange(code, doc.posFromIndex(0), doc.posFromIndex(doc.getValue().length), "+form");
+  doc.replaceRange(code, doc.posFromIndex(0), doc.posFromIndex(doc.getValue().length), origin);
   formWriting = false;
 }
 
@@ -310,6 +320,7 @@ createEditor();
 bindControls();
 showView(state.view);
 updateHistoryButtons();
+updateTemplateButton();
 if (inheritedCode) {
   logMessage("У этого сообщества ещё не было своего кода: взят общий, сохранённый до разделения по группам. Он мог быть от другой группы, проверь перед установкой.");
 }
