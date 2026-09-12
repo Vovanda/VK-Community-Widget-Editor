@@ -189,6 +189,39 @@ body {
   cursor: not-allowed;
 }
 
+/* Меню сниппетов выпадает под своей кнопкой поверх редактора; z-index выше слоёв
+   CodeMirror (у него до 6), без гонки «кто больше». */
+.snippets {
+  position: relative;
+}
+
+.snippets-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  display: grid;
+  min-width: 16em;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.snippets-menu[hidden] {
+  display: none;
+}
+
+.toolbar .snippets-menu button {
+  width: 100%;
+  justify-content: flex-start;
+  font-weight: 400;
+  background: none;
+  white-space: nowrap;
+}
+
 /* Подпись выезжает внутри самой кнопки: в покое видна только иконка, и панель
    помещается во фрейм VK в один ряд; при наведении или фокусе с клавиатуры
    кнопка расширяется до текста. Ширину здесь анимировать приходится — кнопка

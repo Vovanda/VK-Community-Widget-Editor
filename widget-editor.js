@@ -25,9 +25,13 @@ const BEAUTIFY_OPTIONS = { indent_size: 2, brace_style: "collapse,preserve-inlin
 const LOG_PREVIEW_LENGTH = 80;
 const LOG_LIMIT = 10;
 
-/* ==== СНИППЕТ СЛУЧАЙНОСТИ ==== */
+/* ==== СНИППЕТЫ ==== */
 // Типы виджетов, их схемы и шаблоны живут в widget-types.js, форма — в widget-form.js.
-const RANDOM_SNIPPET = `// Случайные числа в VKScript: Math.random здесь нет, поэтому берём случайных друзей
+// Меню «Сниппеты» строится из этой таблицы: новый сниппет — одна запись здесь.
+const SNIPPETS = {
+  random: {
+    label: "Случайные числа",
+    code: `// Случайные числа в VKScript: Math.random здесь нет, поэтому берём случайных друзей
 // донорского профиля. Разбор подхода: https://gist.github.com/Vovanda/b47f75287542eb1f62704d5881b3d1d8
 var count_of_randoms = 1;
 var resp = API.friends.get({ user_id: 3972090, order: "random", count: count_of_randoms });
@@ -40,7 +44,26 @@ while (i < count_of_randoms) {
     var h = (id * 1664525 + 1013904223) % 1000000;
     rnd_values.push(h / 1000000);
     i = i + 1;
-}`;
+}`,
+  },
+  greeting: {
+    label: "Приветствие по времени суток",
+    // Пояс 0 (Лондон) — тоже пояс: сравнивать с null VKScript не даёт (ошибка разных
+    // типов), а в строке null превращается в "", ноль — в "0". «+ 24» держит час
+    // неотрицательным при западных поясах.
+    code: `// Приветствие по времени суток посетителя: час из last_seen.time и часового пояса профиля
+var user = API.users.get({"user_ids": Args.uid, "fields": "timezone,last_seen"})[0];
+var greeting = "Доброго времени суток, ";
+if (user.timezone + "" != "") {
+    var time = (parseInt((user.last_seen.time % 86400) / 3600) + user.timezone + 24) % 24;
+    if (time < 6) greeting = "Доброй ночи, ";
+    else if (time < 12) greeting = "Доброе утро, ";
+    else if (time < 18) greeting = "Добрый день, ";
+    else greeting = "Добрый вечер, ";
+}
+var smart_title = greeting + user.first_name + "!";`,
+  },
+};
 
 /* ==== ЭЛЕМЕНТЫ ==== */
 const byId = id => document.getElementById(id);
@@ -48,7 +71,8 @@ const typeSelect = byId("widgetType");
 const undoBtn = byId("undoBtn");
 const redoBtn = byId("redoBtn");
 const templateBtn = byId("templateBtn");
-const randomBtn = byId("randomBtn");
+const snippetsBtn = byId("snippetsBtn");
+const snippetsMenu = byId("snippetsMenu");
 const formatBtn = byId("formatBtn");
 const permissionBtn = byId("permissionBtn");
 const previewBtn = byId("previewBtn");
@@ -187,9 +211,10 @@ function showView(view) {
   codeTab.setAttribute("aria-selected", String(!inForm));
   editor.getWrapperElement().hidden = inForm;
   formView.hidden = !inForm;
-  // Сниппет и форматирование работают с текстом кода — в форме им нечего делать.
-  randomBtn.disabled = inForm;
+  // Сниппеты и форматирование работают с текстом кода — в форме им нечего делать.
+  snippetsBtn.disabled = inForm;
   formatBtn.disabled = inForm;
+  closeSnippets();
   if (inForm) {
     refreshForm();
   } else {
@@ -203,8 +228,12 @@ function applyTemplate() {
   editor.setValue(templateCode(state.widgetType));
 }
 
-function insertRandomSnippet() {
-  editor.replaceRange(RANDOM_SNIPPET + "\n\n", { line: 0, ch: 0 });
+// Сниппет встаёт в начало: и случайность, и приветствие задают переменные, которые
+// ниже использует остальной код.
+function insertSnippet(name) {
+  editor.replaceRange(SNIPPETS[name].code + "\n\n", { line: 0, ch: 0 });
+  closeSnippets();
+  editor.focus();
 }
 
 function formatCode() {
@@ -216,6 +245,34 @@ function formatCode() {
   const { line } = editor.getCursor();
   editor.setValue(formatted);
   editor.setCursor(Math.min(line, editor.lineCount() - 1));
+}
+
+/* ==== МЕНЮ СНИППЕТОВ ==== */
+function fillSnippetsMenu() {
+  for (const [name, { label }] of Object.entries(SNIPPETS)) {
+    const item = document.createElement("li");
+    item.setAttribute("role", "none");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("role", "menuitem");
+    button.dataset.snippet = name;
+    button.textContent = label;
+    button.addEventListener("click", () => insertSnippet(name));
+    item.append(button);
+    snippetsMenu.append(item);
+  }
+}
+
+function closeSnippets() {
+  snippetsMenu.hidden = true;
+  snippetsBtn.setAttribute("aria-expanded", "false");
+}
+
+function toggleSnippets() {
+  const open = snippetsMenu.hidden;
+  snippetsMenu.hidden = !open;
+  snippetsBtn.setAttribute("aria-expanded", String(open));
+  if (open) snippetsMenu.querySelector("button").focus();
 }
 
 /* ==== ЖУРНАЛ ==== */
@@ -308,14 +365,24 @@ function bindControls() {
   undoBtn.addEventListener("click", () => editor.undo());
   redoBtn.addEventListener("click", () => editor.redo());
   templateBtn.addEventListener("click", applyTemplate);
-  randomBtn.addEventListener("click", insertRandomSnippet);
+  snippetsBtn.addEventListener("click", toggleSnippets);
   formatBtn.addEventListener("click", formatCode);
   previewBtn.addEventListener("click", showPreview);
   permissionBtn.addEventListener("click", requestPermission);
   clearLogBtn.addEventListener("click", clearLog);
+  // Меню закрывается кликом мимо него и клавишей Esc, фокус возвращается на кнопку.
+  document.addEventListener("click", event => {
+    if (!event.target.closest(".snippets")) closeSnippets();
+  });
+  snippetsMenu.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    closeSnippets();
+    snippetsBtn.focus();
+  });
 }
 
 fillTypeSelect();
+fillSnippetsMenu();
 createEditor();
 bindControls();
 showView(state.view);

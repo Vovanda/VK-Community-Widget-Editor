@@ -121,9 +121,21 @@ check(await code(page) === "", "«Отменить» не вернула пус�
 await page.click("#redoBtn");
 check((await code(page)).includes("Рестораны"), "«Повторить» не сработала");
 
-await page.click("#randomBtn");
-check((await code(page)).startsWith("// Случайные числа"), "генератор не вставился в начало");
+// Меню «Сниппеты» строится из таблицы SNIPPETS; оба сниппета встают в начало кода.
+await page.click("#snippetsBtn");
+const snippetItems = await page.locator("#snippetsMenu [role=menuitem]").allTextContents();
+check(snippetItems.length === 2, "в меню сниппетов не 2 пункта: " + snippetItems.join(", "));
+await page.click('#snippetsMenu [data-snippet="random"]');
+check((await code(page)).startsWith("// Случайные числа"), "сниппет случайности не вставился в начало");
+check(await page.isHidden("#snippetsMenu"), "меню не закрылось после выбора");
 await page.click("#undoBtn");
+await page.click("#snippetsBtn");
+await page.click('#snippetsMenu [data-snippet="greeting"]');
+check((await code(page)).startsWith("// Приветствие по времени суток"), "сниппет приветствия не вставился в начало");
+await page.click("#undoBtn");
+await page.click("#snippetsBtn");
+await page.keyboard.press("Escape");
+check(await page.isHidden("#snippetsMenu"), "Esc не закрыл меню сниппетов");
 
 /* ==== ФОРМА ==== */
 // Форма — второй вид того же кода: правка в форме меняет код, «Отменить» откатывает её.
@@ -350,7 +362,7 @@ check(logRows === 10, "в журнале не 10 строк, а " + logRows);
 /* ==== ШИРИНЫ ==== */
 // Подпись живёт в самой кнопке: без неё пусто и при наведении, и для экранного диктора.
 // Всплывающих подсказок (title) владелец не хочет.
-const unlabeled = await page.evaluate(() => [...document.querySelectorAll(".toolbar button")]
+const unlabeled = await page.evaluate(() => [...document.querySelectorAll(".toolbar button:not([role=menuitem])")]
   .filter(button => !button.querySelector(".btn-label")?.textContent.trim()).map(button => button.id));
 check(!unlabeled.length, "кнопки панели без подписи: " + unlabeled.join(", "));
 const tooltips = await page.evaluate(() => document.querySelectorAll(".toolbar [title]").length);
@@ -359,7 +371,9 @@ check(tooltips === 0, "на панели остались всплывающие
 // Сколько рядов занимает панель: элементы с верхом ближе 8px считаются одним рядом,
 // иначе разная высота кнопки и списка дала бы лишний «ряд».
 const toolbarRows = () => page.evaluate(() => {
+  // Скрытые пункты меню сниппетов дают нулевой прямоугольник — это не ряд панели.
   const tops = [...document.querySelectorAll(".toolbar button, .toolbar select")]
+    .filter(el => el.getClientRects().length)
     .map(el => el.getBoundingClientRect().top).sort((a, b) => a - b);
   return tops.filter((top, i) => i === 0 || top - tops[i - 1] > 8).length;
 });
