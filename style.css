@@ -139,11 +139,14 @@ body {
 /* ==== ПАНЕЛЬ ИНСТРУМЕНТОВ ==== */
 /* Три группы по раскладке владельца: история и тип, правка кода, действия VK.
    Кнопки иконками: VK показывает приложение в колонке ~650px, и подписи
-   разрывали панель на несколько рядов. Текст кнопки выезжает внутри неё. */
+   разрывали панель на несколько рядов. Текст кнопки выезжает внутри неё.
+   Группы стоят от неподвижных краёв: при space-between раскрытие кнопки
+   перестраивало группы, кнопка уезжала из-под курсора, сжималась, возвращалась
+   под него — и мигала без конца. Теперь она растёт от своего края. */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--gap) 16px;
   padding: 10px 12px;
   border: 1px solid var(--line);
@@ -155,6 +158,10 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.tool-group-vk {
+  margin-left: auto;
 }
 
 .toolbar button,
@@ -222,28 +229,62 @@ body {
   white-space: nowrap;
 }
 
-/* Подпись выезжает внутри самой кнопки: в покое видна только иконка, и панель
-   помещается во фрейм VK в один ряд; при наведении или фокусе с клавиатуры
-   кнопка расширяется до текста. Ширину здесь анимировать приходится — кнопка
-   должна именно раздвинуться; при prefers-reduced-motion без анимации. */
+/* Подпись выезжает из кнопки поверх соседей и места в раскладке не занимает:
+   для глаза кнопка становится шире, а панель не двигается. Когда подпись
+   раздвигала панель, группы перестраивались, ряд переносился, кнопка уезжала
+   из-под курсора, сжималась, возвращалась под него — и мигала без конца.
+   Наведённая кнопка всегда поверх той, где остался фокус с клавиатуры. */
 .toolbar button {
+  position: relative;
   display: inline-flex;
   align-items: center;
 }
 
+.toolbar button:focus-visible {
+  z-index: 2;
+}
+
+.toolbar button:hover {
+  z-index: 3;
+}
+
+/* Подпись прозрачна для мыши: иначе, лёжа поверх соседа, она держала наведение
+   на своей кнопке и закрывала соседнюю кнопку от курсора и клика. */
 .btn-label {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
   max-width: 0;
   overflow: hidden;
   white-space: nowrap;
+  background: inherit;
+  border-radius: 0 var(--radius) var(--radius) 0;
   opacity: 0;
-  transition: max-width 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease;
+  transition: max-width 0.2s ease, opacity 0.2s ease;
 }
 
 .toolbar button:hover .btn-label,
 .toolbar button:focus-visible .btn-label {
   max-width: 12em;
-  margin-left: 6px;
+  padding-right: 12px;
   opacity: 1;
+}
+
+/* У кнопок VK подпись выезжает влево: справа край карточки. */
+.tool-group-vk .btn-label {
+  left: auto;
+  right: 100%;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.tool-group-vk button:hover .btn-label,
+.tool-group-vk button:focus-visible .btn-label {
+  padding-right: 0;
+  padding-left: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -714,5 +755,46 @@ a:focus-visible {
 
   .form-object > .form-field {
     grid-column: 1 / -1;
+  }
+}
+
+/* Без наведения (телефон, планшет) и в узком окне подпись кнопки видна всегда:
+   раскрываться по наведению там нечем, а в узком окне раскрытие переносило бы ряд. */
+@media (max-width: 640px), (hover: none) {
+  .btn-label,
+  .tool-group-vk .btn-label {
+    position: static;
+    max-width: none;
+    margin-left: 6px;
+    padding: 0;
+    background: none;
+    opacity: 1;
+    transition: none;
+  }
+}
+
+/* В узком окне кнопки встают сеткой по две: подписи видны, ряды предсказуемы.
+   Группы растворяются в сетке; тип виджета и предпросмотр — во всю ширину. */
+@media (max-width: 640px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tool-group {
+    display: contents;
+  }
+
+  .toolbar button {
+    justify-content: center;
+  }
+
+  .toolbar select,
+  .toolbar .primary {
+    grid-column: 1 / -1;
+  }
+
+  .snippets > button {
+    width: 100%;
   }
 }

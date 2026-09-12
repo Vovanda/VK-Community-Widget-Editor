@@ -30,8 +30,12 @@ const browser = await chromium.launch(process.env.SMOKE_CHROME ? { executablePat
 
 // before и его аргумент уходят в addInitScript: он выполняется до скриптов страницы
 // при каждой загрузке, включая reload.
-async function openPage({ fakeVk, before, beforeArg, colorScheme = "light", url = URL } = {}) {
-  const context = await browser.newContext({ viewport: { width: 1200, height: 900 }, colorScheme });
+// mobile — телефон по-настоящему: узкий экран, касания, без наведения (hover: none).
+async function openPage({ fakeVk, before, beforeArg, colorScheme = "light", url = URL, mobile = false } = {}) {
+  const context = await browser.newContext({
+    viewport: mobile ? { width: 390, height: 844 } : { width: 1200, height: 900 },
+    colorScheme, isMobile: mobile, hasTouch: mobile,
+  });
   const page = await context.newPage();
   page.on("pageerror", e => problems.push("ошибка скрипта: " + e.message));
   // cdnjs — это Cloudflare, в РФ его режут: всё стороннее обязано приезжать из vendor/.
@@ -412,6 +416,33 @@ const focusedLabel = await page.evaluate(() => {
 });
 check(focusedLabel === "1", "подпись не видна при фокусе с клавиатуры: " + focusedLabel);
 
+// Наведение не должно уводить кнопку из-под курсора: иначе она сжимается, снова
+// попадает под курсор и мигает без конца. Проверяется каждая кнопка на каждой ширине.
+// Фокус с клавиатуры от прошлой проверки снимается, и перед каждой кнопкой курсор
+// уходит, а подписи схлопываются: иначе замер снимается с чужой раскрытой подписью.
+await page.evaluate(() => document.activeElement?.blur());
+for (const width of [641, 650, 700, 768, 900, 1024, 1200]) {
+  await page.setViewportSize({ width, height: 900 });
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(250);
+  const rowsBefore = await toolbarRows();
+  for (const button of await page.$$(".toolbar button:not([role=menuitem])")) {
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(250);
+    const box = await button.boundingBox();
+    if (!box) continue;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.waitForTimeout(250);
+    const stays = await page.evaluate(([px, py, el]) => document.elementFromPoint(px, py)?.closest("button") === el, [x, y, button]);
+    const rowsAfter = await toolbarRows();
+    check(stays && rowsAfter === rowsBefore,
+      `на ${width}px наведение на ${await button.getAttribute("id")} уводит кнопку из-под курсора или меняет ряды (${rowsBefore} -> ${rowsAfter})`);
+  }
+  await page.mouse.move(0, 0);
+}
+
 // Вёрстка не зависит от содержимого и окна: длинные строки скрипта не распирают блок
 // ни в коде, ни в форме — на любой ширине от телефона до широкого монитора.
 await setCode(page, veoomsk);
@@ -468,6 +499,28 @@ if (SHOTS) {
     await page.screenshot({ path: `${SHOTS}/dark-width-${width}.png`, fullPage: true });
   }
 }
+
+/* ==== ТЕЛЕФОН ==== */
+// Наведения нет: подписи кнопок видны сразу, кнопки стоят по две в ряд.
+page = await openPage({ fakeVk: true, before: clearStorageOnce, mobile: true });
+const mobileBar = await page.evaluate(() => {
+  const buttons = [...document.querySelectorAll(".toolbar button:not([role=menuitem])")];
+  const hiddenLabels = buttons.filter(button => {
+    const label = button.querySelector(".btn-label");
+    return !label || getComputedStyle(label).opacity !== "1" || label.getBoundingClientRect().width === 0;
+  }).map(button => button.id);
+  const perRow = new Map();
+  for (const button of buttons) {
+    const top = Math.round(button.getBoundingClientRect().top);
+    perRow.set(top, (perRow.get(top) ?? 0) + 1);
+  }
+  return { hiddenLabels, widestRow: Math.max(...perRow.values()), noHover: matchMedia("(hover: none)").matches };
+});
+console.log("телефон:", JSON.stringify(mobileBar));
+check(mobileBar.noHover, "телефон в смоке не эмулирует отсутствие наведения");
+check(!mobileBar.hiddenLabels.length, "на телефоне скрыты подписи у: " + mobileBar.hiddenLabels.join(", "));
+check(mobileBar.widestRow <= 2, "на телефоне в ряду больше двух кнопок: " + mobileBar.widestRow);
+if (SHOTS) await page.screenshot({ path: `${SHOTS}/mobile-390.png` });
 
 await browser.close();
 if (problems.length) {
