@@ -425,12 +425,30 @@ function requestPermission() {
   VK.callMethod("showGroupSettingsBox", WIDGET_PERMISSION);
 }
 
+// VK не растягивает iframe под содержимое: размер из настроек приложения (650×630)
+// фиксирован, и без resizeWindow низ страницы — журнал, подвал — обрезался.
+// Высота — по низу карточки, а не scrollHeight: тот не меньше самого фрейма,
+// и фрейм мог бы только расти. Потолок 4050 — из старой доки клиентского API, не сверен.
+const FRAME_MAX_HEIGHT = 4050;
+const APP_MARGIN_BOTTOM = 16;
+
+function fitVkFrame() {
+  const bottom = document.querySelector(".app").getBoundingClientRect().bottom + window.scrollY;
+  const height = Math.min(Math.ceil(bottom) + APP_MARGIN_BOTTOM, FRAME_MAX_HEIGHT);
+  VK.callMethod("resizeWindow", document.documentElement.clientWidth, height);
+}
+
 function onVkReady() {
   VK.addCallback("onAppWidgetPreviewFail", event =>
     logMessage("VK не показал предпросмотр: " + JSON.stringify(event)));
   previewBtn.disabled = false;
   permissionBtn.disabled = false;
   vkStatus.textContent = GROUP_ID ? "Подключено к VK, сообщество " + GROUP_ID : "Подключено к VK";
+  // Внутри VK высота редактора не зависит от окна (см. .in-vk в стилях): окно — это фрейм,
+  // который мы сами растягиваем, и 60vh тянули бы редактор следом, а он — фрейм, по кругу.
+  document.documentElement.classList.add("in-vk");
+  // Высота меняется от журнала, формы, свёрнутых блоков — следим за карточкой целиком.
+  new ResizeObserver(fitVkFrame).observe(document.querySelector(".app"));
 }
 
 function connectVk() {

@@ -422,11 +422,37 @@ await page.context().close();
 /* ==== ВНУТРИ VK (подделка) ==== */
 page = await openPage({ fakeVk: true, before: clearStorageOnce });
 check(!(await page.isDisabled("#previewBtn")), "в VK кнопка предпросмотра выключена");
+
+// VK сам iframe не растягивает: страница сообщает высоту — низ карточки плюс поле.
+const appHeight = () => page.evaluate(() =>
+  Math.ceil(document.querySelector(".app").getBoundingClientRect().bottom + window.scrollY) + 16);
+const lastResize = () => page.evaluate(() => window.__vkCalls.filter(call => call[0] === "resizeWindow").at(-1)?.[2]);
+await page.waitForFunction(() => window.__vkCalls.some(call => call[0] === "resizeWindow"), null, { timeout: 5000 })
+  .catch(() => {});
+const firstResize = await lastResize();
+check(firstResize === await appHeight(), `после подключения resizeWindow не по высоте страницы: ${firstResize} вместо ${await appHeight()}`);
+// В настоящем VK resizeWindow меняет высоту окна. Редактор от неё зависеть не должен,
+// иначе фрейм и редактор растягивают друг друга по кругу.
+const editorHeights = [];
+for (const height of [630, 1000]) {
+  await page.setViewportSize({ width: 650, height });
+  editorHeights.push(await page.evaluate(() => document.querySelector(".CodeMirror").getBoundingClientRect().height));
+}
+await page.setViewportSize({ width: 1200, height: 900 });
+check(editorHeights[0] === editorHeights[1], "в VK высота редактора зависит от высоты окна: " + editorHeights.join(" -> "));
+await page.waitForFunction(() => {
+  const calls = window.__vkCalls.filter(call => call[0] === "resizeWindow");
+  const app = Math.ceil(document.querySelector(".app").getBoundingClientRect().bottom + window.scrollY) + 16;
+  return calls.at(-1)?.[2] === app;
+}, null, { timeout: 5000 }).catch(() => {});
+const settledResize = await lastResize();
+
 await page.click("#previewBtn");
 await page.click(".CodeMirror");
 await page.keyboard.press("Control+Enter");
 await page.click("#permissionBtn");
-const calls = await page.evaluate(() => window.__vkCalls);
+// resizeWindow идёт своим чередом, проверки аргументов — по остальным вызовам.
+const calls = await page.evaluate(() => window.__vkCalls.filter(call => call[0] !== "resizeWindow"));
 console.log("вызовы VK:", JSON.stringify(calls).slice(0, 200));
 check(calls[0]?.[0] === "showAppWidgetPreviewBox" && calls[0][1] === "list" && calls[0][2].includes("Рестораны"),
   "предпросмотр ушёл в VK не с теми аргументами");
@@ -434,6 +460,12 @@ check(calls[1]?.[0] === "showAppWidgetPreviewBox", "Ctrl+Enter не открыл
 check(calls[2]?.[0] === "showGroupSettingsBox" && calls[2][1] === 64, "права запрошены не с тем битом");
 await page.evaluate(() => window.__vkCallbacks.onAppWidgetPreviewFail({ error_msg: "тест" }));
 check(!(await page.evaluate(() => document.getElementById("log").hidden)), "ошибка VK не показана в журнале");
+// Журнал вырос — фрейм обязан вырасти следом, иначе журнал срезан, как было в VK.
+await page.waitForFunction(before => (window.__vkCalls.filter(call => call[0] === "resizeWindow").at(-1)?.[2] ?? 0) > before,
+  settledResize, { timeout: 5000 }).catch(() => {});
+const grownResize = await lastResize();
+check(grownResize > settledResize && grownResize === await appHeight(),
+  `журнал появился, а фрейм не вырос до высоты страницы: ${settledResize} -> ${grownResize}, нужно ${await appHeight()}`);
 
 // Журнал не копит мусор: повтор одной ошибки — одна строка со счётчиком, всего не больше 10.
 const failPreview = message => page.evaluate(m => window.__vkCallbacks.onAppWidgetPreviewFail({ error_msg: m }), message);
