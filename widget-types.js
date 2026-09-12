@@ -224,7 +224,8 @@ function checkValue(value, field, path, problems) {
       } else {
         if (field.max && value.length > field.max) problems.push(`${path}: длиннее ${field.max} символов`);
         if (field.oneLine && value.includes("\n")) problems.push(`${path}: без переносов строки`);
-        if (field.kind === "url" && !isVkUrl(value)) problems.push(`${path}: адрес только на домены VK: ${VK_URL_HOSTS.join(", ")}`);
+        // Пустой адрес VK принимает: так живёт stub_item в скриптах владельца, и виджет работает.
+        if (field.kind === "url" && value !== "" && !isVkUrl(value)) problems.push(`${path}: адрес только на домены VK: ${VK_URL_HOSTS.join(", ")}`);
       }
       break;
     case "integer":

@@ -426,10 +426,44 @@ a:focus-visible {
   border-radius: var(--radius);
 }
 
-.form-refusal {
+.form-refusal,
+.form-note {
   margin: 0;
   font-size: 0.875rem;
   color: var(--text-muted);
+}
+
+/* Блок данных скрипта — своя область, сворачивается по заголовку. */
+.form-block {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.form-block-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+  padding: 8px 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.form-block[open] > .form-block-head {
+  border-bottom: 1px solid var(--line);
+}
+
+.form-block-name {
+  font-family: var(--font-code);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.form-block-body {
+  display: grid;
+  gap: var(--gap);
+  padding: 10px;
 }
 
 /* ==== ЖУРНАЛ ==== */

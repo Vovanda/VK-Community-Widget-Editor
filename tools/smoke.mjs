@@ -159,6 +159,44 @@ check(await code(page) === script, "форма изменила скрипт, к
 await page.click("#codeTab");
 check(await page.isVisible(".CodeMirror"), "вкладка «Код» не вернула редактор");
 
+/* ==== БЛОКИ СКРИПТА ==== */
+// Настоящий скрипт владельца: данные в var, логика вокруг. Форма показывает блоки
+// с сигнатурой строки List и меняет только их литералы.
+const { readFileSync } = await import("node:fs");
+// Константа URL выше — адрес страницы и перекрывает класс, поэтому класс берётся явно.
+const veoomsk = readFileSync(new globalThis.URL("../templates/veoomsk/RandomTextInWidget.vks", import.meta.url), "utf8");
+await page.click("#formTab");
+await setCode(page, veoomsk);
+const areas = await page.evaluate(() => [...document.querySelectorAll("#formView .form-block")].map(area => ({
+  name: area.dataset.name,
+  title: area.querySelector(".form-block-title").textContent,
+  adds: area.querySelectorAll(".form-add").length,
+})));
+console.log("блоки veoomsk:", areas.map(a => a.name + (a.adds ? "+" : "")).join(" "));
+check(areas.map(a => a.name).join() === "engagement,sales,group_invite,info,stub_item",
+  "блоки скрипта не те: " + areas.map(a => a.name).join());
+check(areas[0]?.title.startsWith("Действия для повышения"), "заголовок блока не из комментария: " + areas[0]?.title);
+check(areas[4]?.title === "stub_item", "блок без комментария назван не по имени: " + areas[4]?.title);
+check(areas.map(a => a.adds).join() === "1,1,1,1,0", "«Добавить» не только у массивов: " + areas.map(a => a.adds).join());
+
+const blockRange = (source, name) => page.evaluate(([s, n]) => {
+  const block = findBlocks(s, "list").find(b => b.name === n);
+  return [block.start, block.end, Array.isArray(block.value) ? block.value.length : 1];
+}, [source, name]);
+const beforeEdit = await code(page);
+const [engStart, engEnd] = await blockRange(beforeEdit, "engagement");
+await page.locator('#formView [data-path="engagement.0.title"]').fill("Лайкните пост!");
+const afterEdit = await code(page);
+const [engStart2, engEnd2] = await blockRange(afterEdit, "engagement");
+check(afterEdit.includes('"title":"Лайкните пост!"'), "правка блока не попала в код");
+check(beforeEdit.slice(0, engStart) === afterEdit.slice(0, engStart2) && beforeEdit.slice(engEnd) === afterEdit.slice(engEnd2),
+  "правка engagement задела код вне его литерала");
+const [, , salesBefore] = await blockRange(afterEdit, "sales");
+await page.click('#formView .form-block[data-name="sales"] .form-add');
+const [, , salesAfter] = await blockRange(await code(page), "sales");
+check(salesAfter === salesBefore + 1, `«Добавить» в sales: было ${salesBefore}, стало ${salesAfter}`);
+await page.click("#codeTab");
+
 /* ==== ФОРМАТИРОВАНИЕ ==== */
 await setCode(page, 'var ids=API.friends.get({"user_id":1}).items@.id;\nreturn {"title":"x","rows":[ids]};');
 await page.click("#formatBtn");

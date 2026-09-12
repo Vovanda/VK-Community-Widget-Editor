@@ -1,9 +1,11 @@
 /* Форма без кода — второй вид того же кода. Источник правды один: документ
-   CodeMirror. Форма вычитывает из кода виджет, а каждую правку пишет обратно
+   CodeMirror. Форма вычитывает из кода данные, а каждую правку пишет обратно
    в код, поэтому отмена, хранение и предпросмотр одинаковы в обоих видах.
 
-   Сейчас форма понимает только простой код — один return с JSON-объектом,
-   как у шаблонов. Скрипт с переменными и вызовами API она не трогает. */
+   Код бывает двух видов. Простой — один return с JSON-объектом, как у шаблонов:
+   форма показывает виджет целиком. Скрипт — данные в переменных и логика вокруг
+   них: форма показывает блоки данных с подходящей сигнатурой и меняет только
+   их литералы, логику не трогает. */
 
 /* ==== КОД И ВИДЖЕТ ==== */
 function widgetToCode(widget) {
@@ -19,6 +21,120 @@ function readSimpleWidget(code) {
   } catch {
     return null;
   }
+}
+
+/* ==== БЛОКИ СКРИПТА ==== */
+// VKScript почти JS; acorn не разберёт только выборку «@.» — меняем её на токен
+// той же длины, чтобы позиции узлов совпали с исходником.
+function parseScript(code) {
+  const comments = [];
+  try {
+    const ast = acorn.parse(code.replace(/@\./g, "._"),
+      { ecmaVersion: 5, allowReturnOutsideFunction: true, onComment: comments });
+    return { ast, comments };
+  } catch {
+    return null;
+  }
+}
+
+// Чистый литерал — только строки, числа, true/false/null и массивы с объектами из них.
+// Всё остальное (вызовы, переменные, выражения) — логика, и значения у неё нет.
+function literalValue(node) {
+  switch (node.type) {
+    case "Literal":
+      return node.regex ? undefined : node.value;
+    case "UnaryExpression":
+      return node.operator === "-" && typeof node.argument.value === "number" ? -node.argument.value : undefined;
+    case "ArrayExpression": {
+      const items = node.elements.map(item => (item ? literalValue(item) : undefined));
+      return items.includes(undefined) ? undefined : items;
+    }
+    case "ObjectExpression": {
+      const obj = {};
+      for (const property of node.properties) {
+        if (property.computed || property.kind !== "init") return undefined;
+        const value = literalValue(property.value);
+        if (value === undefined) return undefined;
+        obj[property.key.type === "Identifier" ? property.key.name : property.key.value] = value;
+      }
+      return obj;
+    }
+    default:
+      return undefined;
+  }
+}
+
+// Какие формы данных знает тип: элементы его списков и сам виджет. Выбор типа
+// меняет набор форм — это и есть стратегия поиска сигнатур.
+function knownShapes(type) {
+  const fields = WIDGET_TYPES[type].fields;
+  const shapes = Object.values(fields)
+    .filter(field => field.kind === "array" && field.of.kind === "object")
+    .map(field => field.of);
+  shapes.push(objField(fields));
+  return shapes;
+}
+
+const fitsShape = (obj, shape) => obj !== null && typeof obj === "object" && !Array.isArray(obj)
+  && Object.keys(obj).length > 0 && Object.keys(obj).every(key => key in shape.fields);
+
+// Сигнатура блока: непустой массив объектов или один объект, все ключи которых — поля формы.
+function matchShape(value, type) {
+  const shapes = knownShapes(type);
+  if (Array.isArray(value)) {
+    return value.length ? shapes.find(shape => value.every(item => fitsShape(item, shape))) ?? null : null;
+  }
+  return shapes.find(shape => fitsShape(value, shape)) ?? null;
+}
+
+// Заголовок блока — комментарий прямо над объявлением, без декоративных «===».
+function commentAbove(comments, code, start) {
+  const comment = comments.filter(c => c.end <= start).pop();
+  if (!comment || code.slice(comment.end, start).trim() !== "") return null;
+  return comment.value.replace(/=+/g, " ").trim() || null;
+}
+
+// Все верхнеуровневые var с литералом: имя, диапазон в коде и значение.
+function literalDeclarations(code) {
+  const parsed = parseScript(code);
+  if (!parsed) return null;
+  const found = [];
+  for (const node of parsed.ast.body) {
+    if (node.type !== "VariableDeclaration") continue;
+    for (const declaration of node.declarations) {
+      if (!declaration.init) continue;
+      const value = literalValue(declaration.init);
+      if (value === undefined) continue;
+      found.push({ name: declaration.id.name, start: declaration.init.start, end: declaration.init.end, value,
+        title: commentAbove(parsed.comments, code, node.start) });
+    }
+  }
+  return found;
+}
+
+function findBlocks(code, type) {
+  const declarations = literalDeclarations(code);
+  if (!declarations) return null;
+  return declarations
+    .map(declaration => ({ ...declaration, shape: matchShape(declaration.value, type) }))
+    .filter(block => block.shape);
+}
+
+// Правленый блок пишется в стиле скриптов владельца: элемент массива — одна строка.
+function literalToCode(value) {
+  if (Array.isArray(value)) {
+    return value.length ? "[\n" + value.map(item => "    " + JSON.stringify(item)).join(",\n") + "\n]" : "[]";
+  }
+  return JSON.stringify(value, null, 4);
+}
+
+// Блок данных — пул, из которого скрипт выбирает, а не строки виджета: правила
+// массива (сколько строк, кнопка у всех) к нему не относятся, только поля элементов.
+function blockProblems(block) {
+  const problems = [];
+  const items = Array.isArray(block.value) ? block.value : [block.value];
+  items.forEach((item, i) => checkObject(item, block.shape.fields, `${block.name}[${i}]`, problems));
+  return problems;
 }
 
 /* ==== ПОЛЯ ==== */
@@ -164,22 +280,18 @@ function renderArray(items, field, label, path, ctx, remove) {
 }
 
 /* ==== ФОРМА ==== */
+function renderProblems(list, problems) {
+  list.replaceChildren(...problems.map(text => el("li", null, text)));
+}
+
 // Правка значения пишет код и обновляет список нарушений, форму не перерисовывает —
 // иначе поле теряло бы фокус на каждой букве. Добавление и удаление перерисовывают.
-function renderForm(container, type, code, writeCode) {
-  const widget = readSimpleWidget(code);
-  if (!widget) {
-    container.replaceChildren(el("p", "form-refusal",
-      "Этот код сложнее формы: в нём есть переменные или вызовы API. Правь его во вкладке «Код»."));
-    return;
-  }
+function renderWidgetForm(container, type, widget, writeCode) {
   const problems = el("ul", "form-problems");
-  const showProblems = () =>
-    problems.replaceChildren(...validateWidget(type, widget).map(text => el("li", null, text)));
   const ctx = {
     commit() {
       writeCode(widgetToCode(widget));
-      showProblems();
+      renderProblems(problems, validateWidget(type, widget));
     },
     restructure() {
       ctx.commit();
@@ -188,7 +300,66 @@ function renderForm(container, type, code, writeCode) {
   };
   function draw() {
     container.replaceChildren(renderObject(widget, WIDGET_TYPES[type].fields, "", ctx), problems);
-    showProblems();
+    renderProblems(problems, validateWidget(type, widget));
   }
   draw();
+}
+
+// Каждый блок — своя область. Правка меняет только литерал блока; после неё
+// позиции всех литералов сдвигаются, поэтому они пересчитываются по новому коду,
+// а значения остаются теми же объектами, к которым привязаны поля.
+function renderBlocksForm(container, type, code, blocks, writeCode) {
+  let current = code;
+  const syncRanges = () => {
+    const ranges = new Map(literalDeclarations(current).map(d => [d.name, d]));
+    for (const block of blocks) Object.assign(block, { start: ranges.get(block.name).start, end: ranges.get(block.name).end });
+  };
+  const areas = blocks.map(block => {
+    const area = el("details", "form-block");
+    area.open = true;
+    area.dataset.name = block.name;
+    const summary = el("summary", "form-block-head");
+    summary.append(el("span", "form-block-title", block.title ?? block.name));
+    if (block.title) summary.append(el("code", "form-block-name", block.name));
+    const body = el("div", "form-block-body");
+    const problems = el("ul", "form-problems");
+    const ctx = {
+      commit() {
+        current = current.slice(0, block.start) + literalToCode(block.value) + current.slice(block.end);
+        writeCode(current);
+        syncRanges();
+        renderProblems(problems, blockProblems(block));
+      },
+      restructure() {
+        ctx.commit();
+        draw();
+      },
+    };
+    function draw() {
+      body.replaceChildren(Array.isArray(block.value)
+        ? renderArray(block.value, arrField(block.shape), "Элементы", block.name, ctx, null)
+        : renderObject(block.value, block.shape.fields, block.name, ctx), problems);
+      renderProblems(problems, blockProblems(block));
+    }
+    draw();
+    area.append(summary, body);
+    return area;
+  });
+  container.replaceChildren(el("p", "form-note",
+    "Скрипт: в форме блоки данных, логика остаётся в коде и не меняется."), ...areas);
+}
+
+function renderForm(container, type, code, writeCode) {
+  const widget = readSimpleWidget(code);
+  if (widget) {
+    renderWidgetForm(container, type, widget, writeCode);
+    return;
+  }
+  const blocks = findBlocks(code, type);
+  if (blocks?.length) {
+    renderBlocksForm(container, type, code, blocks, writeCode);
+    return;
+  }
+  container.replaceChildren(el("p", "form-refusal",
+    "В этом коде нет блоков данных, которые понимает форма. Правь его во вкладке «Код»."));
 }
