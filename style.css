@@ -348,6 +348,19 @@ a:focus-visible {
 .workspace .cm-variable-2,
 .workspace .cm-operator { color: var(--text); }
 
+/* Предупреждение о хранении — под редактором, общее для формы и кода: код живёт
+   в localStorage этого браузера, и потерять его можно, не заметив. */
+.storage-note {
+  display: flex;
+  gap: var(--gap);
+  align-items: baseline;
+  margin: var(--gap) 0 0;
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  background: var(--warning-bg);
+  border-radius: var(--radius);
+}
+
 /* ==== ФОРМА ==== */
 /* Форма занимает место редактора той же высоты и прокручивается внутри:
    панель и кнопка предпросмотра остаются на месте. */

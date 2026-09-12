@@ -110,6 +110,10 @@ check(iconFont, "шрифт иконок не загрузился: вместо
 // Подсказка про VK CC говорит, зачем он нужен и где подводит.
 const vkccHint = await page.textContent("#vkccHint");
 check(vkccHint.includes("статистик") && vkccHint.includes("редирект"), "подсказка про VK CC без статистики или без риска: " + vkccHint);
+// Код живёт только в localStorage: предупреждение говорит где, чем грозит и что делать.
+const storageNote = await page.textContent("#storageNote");
+check(["браузере", "другого компьютера", "копию в файле"].every(part => storageNote.includes(part)),
+  "предупреждение о хранении не говорит про браузер, другой компьютер или копию: " + storageNote);
 
 /* ==== ТИПЫ И ОТМЕНА ==== */
 await setCode(page, 'return {"title":"мой список","rows":[]};');
@@ -493,17 +497,21 @@ for (const view of ["code", "form"]) {
     await page.setViewportSize({ width, height: 900 });
     const fit = await page.evaluate(() => {
       const card = document.querySelector(".app").getBoundingClientRect();
-      const parts = [".workspace", ".toolbar", ".CodeMirror", "#formView"]
+      const parts = [".workspace", ".toolbar", ".CodeMirror", "#formView", "#storageNote"]
         .map(selector => document.querySelector(selector))
         .filter(part => part && part.getClientRects().length);
       const widest = Math.max(...parts.map(part => part.getBoundingClientRect().right));
+      const note = document.getElementById("storageNote").getBoundingClientRect();
       return {
         page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         spill: Math.round(widest - card.right),
+        note: note.width > 0 && note.height > 0,
       };
     });
+    const where = `${view === "code" ? "код" : "форма"} на ${width}px`;
     check(fit.page <= 1 && fit.spill <= 0,
-      `${view === "code" ? "код" : "форма"} на ${width}px: страница уезжает на ${fit.page}px, блок шире карточки на ${fit.spill}px`);
+      `${where}: страница уезжает на ${fit.page}px, блок шире карточки на ${fit.spill}px`);
+    check(fit.note, `${where}: не видно предупреждения о хранении`);
   }
 }
 await page.click("#codeTab");
