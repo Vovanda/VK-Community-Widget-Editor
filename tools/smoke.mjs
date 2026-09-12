@@ -121,6 +121,44 @@ await page.click("#randomBtn");
 check((await code(page)).startsWith("// Случайные числа"), "генератор не вставился в начало");
 await page.click("#undoBtn");
 
+/* ==== ФОРМА ==== */
+// Форма — второй вид того же кода: правка в форме меняет код, «Отменить» откатывает её.
+await page.click("#templateBtn");
+await page.click("#formTab");
+check(await page.isHidden(".CodeMirror"), "в форме виден редактор кода");
+const titleInput = page.locator('#formView [data-path="title"]');
+check(await titleInput.inputValue() === "Рестораны", "форма не подхватила заголовок из кода");
+await titleInput.fill("Кафе");
+check((await code(page)).includes('"title": "Кафе"'), "правка в форме не попала в код");
+await page.click("#undoBtn");
+check(!(await code(page)).includes('"title": "Кафе"'), "«Отменить» не откатила правку формы");
+check(await titleInput.inputValue() === "Рестораны", "после отмены форма показывает старое значение");
+await page.click('#formView .form-add[data-path="rows"]');
+const rowsAfterAdd = await page.evaluate(() => readSimpleWidget(document.querySelector(".CodeMirror").CodeMirror.getValue()).rows.length);
+check(rowsAfterAdd === 2, "«Добавить» не добавил строку в код: строк " + rowsAfterAdd);
+
+// Шаблон каждого типа открывается в форме без отказа и без нарушений схемы.
+for (const type of typeValues) {
+  await page.selectOption("#widgetType", type);
+  await page.click("#templateBtn");
+  const formState = await page.evaluate(() => ({
+    refusal: Boolean(document.querySelector("#formView .form-refusal")),
+    fields: document.querySelectorAll("#formView [data-path]").length,
+    problems: [...document.querySelectorAll("#formView .form-problems li")].map(li => li.textContent),
+  }));
+  check(!formState.refusal && formState.fields > 0, "форма не открыла шаблон " + type);
+  check(!formState.problems.length, "форма " + type + " показывает нарушения на шаблоне: " + formState.problems.join("; "));
+}
+
+// Скрипт с переменными форма не трогает: отказ и код без изменений.
+await page.selectOption("#widgetType", "list");
+const script = 'var x = 1;\nreturn {"title":"x","rows":[]};';
+await setCode(page, script);
+check(await page.isVisible("#formView .form-refusal"), "на скрипте с переменными нет отказа формы");
+check(await code(page) === script, "форма изменила скрипт, который не понимает");
+await page.click("#codeTab");
+check(await page.isVisible(".CodeMirror"), "вкладка «Код» не вернула редактор");
+
 /* ==== ФОРМАТИРОВАНИЕ ==== */
 await setCode(page, 'var ids=API.friends.get({"user_id":1}).items@.id;\nreturn {"title":"x","rows":[ids]};');
 await page.click("#formatBtn");
@@ -258,12 +296,22 @@ check(focusedLabel === "1", "подпись не видна при фокусе 
 const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 console.log("светлая тема:", lightBg);
 check(lightBg === "rgb(235, 237, 240)", "светлая тема не покрасила фон: " + lightBg);
+// Форму во фрейме VK смотрят глазами в обеих темах.
+const shootForm = async name => {
+  if (!SHOTS) return;
+  await page.setViewportSize({ width: VK_FRAME_WIDTH, height: 900 });
+  await page.click("#formTab");
+  await page.screenshot({ path: `${SHOTS}/${name}-${VK_FRAME_WIDTH}.png` });
+  await page.click("#codeTab");
+};
+await shootForm("form");
 await page.context().close();
 
 page = await openPage({ fakeVk: true, colorScheme: "dark", before: clearStorageOnce });
 const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 console.log("тёмная тема:", darkBg);
 check(darkBg === "rgb(10, 10, 10)", "тёмная тема не покрасила фон: " + darkBg);
+await shootForm("dark-form");
 if (SHOTS) {
   for (const width of [390, VK_FRAME_WIDTH, 1200]) {
     await page.setViewportSize({ width, height: 900 });

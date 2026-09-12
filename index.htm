@@ -18,6 +18,10 @@
   </header>
 
   <div class="workspace">
+    <div class="view-tabs" role="tablist" aria-label="Вид">
+      <button type="button" role="tab" id="formTab" aria-selected="false" aria-controls="formView">Форма</button>
+      <button type="button" role="tab" id="codeTab" aria-selected="true">Код</button>
+    </div>
     <div class="toolbar" role="toolbar" aria-label="Код виджета">
       <div class="tool-group">
         <button type="button" id="undoBtn" aria-keyshortcuts="Control+Z"><i class="fa fa-arrow-left" aria-hidden="true"></i><span class="btn-label">Отменить</span></button>
@@ -36,6 +40,7 @@
       </div>
     </div>
     <textarea id="editor" aria-label="Код виджета на VKScript"></textarea>
+    <div id="formView" class="form-view" role="tabpanel" aria-labelledby="formTab" hidden></div>
   </div>
 
   <section id="log" class="log" aria-labelledby="logTitle" hidden>
@@ -66,6 +71,7 @@
 <script src="https://vk.com/js/api/openapi.js"></script>
 <script src="https://vk.com/js/api/xd_connection.js"></script>
 <script src="widget-types.js"></script>
+<script src="widget-form.js"></script>
 <script src="widget-editor.js"></script>
 
 </body>

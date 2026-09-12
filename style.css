@@ -12,7 +12,7 @@
   --accent: #2688eb;            /* ссылки и фокус */
   --primary-bg: #2688eb;        /* главная кнопка */
   --primary-text: #ffffff;
-  --warning-bg: #fff2d6;        /* журнал сообщений */
+  --warning-bg: #fff2d6;        /* журнал сообщений и нарушения схемы */
 
   /* Подсветка кода — One Light: стандартные цвета CodeMirror на тёмном фоне не читаются. */
   --code-keyword: #a626a4;
@@ -26,6 +26,7 @@
   --gap: 8px;
   --pad: 20px;
   --editor-height: clamp(320px, 60vh, 640px);
+  --label-width: 9.5em;
 
   --font-ui: -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", Arial, sans-serif;
   --font-code: Consolas, "SF Mono", Menlo, monospace;
@@ -105,10 +106,34 @@ body {
   white-space: nowrap;
 }
 
+/* ==== ВИДЫ ==== */
+/* Форма и код — два вида одного документа, переключаются вкладками над панелью. */
+.view-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--gap);
+}
+
+.view-tabs button {
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.view-tabs button[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
 /* ==== ПАНЕЛЬ ИНСТРУМЕНТОВ ==== */
 /* Три группы по раскладке владельца: история и тип, правка кода, действия VK.
    Кнопки иконками: VK показывает приложение в колонке ~650px, и подписи
-   разрывали панель на несколько рядов. Смысл кнопки — в title и aria-label. */
+   разрывали панель на несколько рядов. Текст кнопки выезжает внутри неё. */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -190,6 +215,8 @@ body {
 
 button:focus-visible,
 select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -239,6 +266,171 @@ a:focus-visible {
 .workspace .cm-variable,
 .workspace .cm-variable-2,
 .workspace .cm-operator { color: var(--text); }
+
+/* ==== ФОРМА ==== */
+/* Форма занимает место редактора той же высоты и прокручивается внутри:
+   панель и кнопка предпросмотра остаются на месте. */
+.form-view {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  height: var(--editor-height);
+  overflow: auto;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* display: grid выше перебивает атрибут hidden, поэтому скрытие задано явно. */
+.form-view[hidden] {
+  display: none;
+}
+
+.form-object {
+  display: grid;
+  gap: var(--gap);
+}
+
+.form-field {
+  display: grid;
+  grid-template-columns: var(--label-width) minmax(0, 1fr) auto;
+  gap: var(--gap);
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.form-label {
+  color: var(--text-muted);
+}
+
+.form-view input,
+.form-view textarea,
+.form-view select {
+  min-width: 0;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+}
+
+.form-view textarea {
+  resize: vertical;
+}
+
+.form-group {
+  display: grid;
+  gap: var(--gap);
+  margin: 0;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.form-group legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.form-array {
+  display: grid;
+  gap: var(--gap);
+}
+
+.form-array-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+}
+
+.form-array-head h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.form-count {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.form-card {
+  display: grid;
+  gap: var(--gap);
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.form-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.form-add,
+.form-remove {
+  font: inherit;
+  font-size: 0.8125rem;
+  background: var(--surface-alt);
+  border: 0;
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.form-add {
+  justify-self: start;
+  color: var(--accent);
+}
+
+.form-add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.form-remove {
+  color: var(--text-muted);
+  background: none;
+  padding: 4px 6px;
+}
+
+.form-remove:hover {
+  color: var(--text);
+}
+
+.form-add-field {
+  justify-self: start;
+}
+
+.form-problems {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+}
+
+.form-problems:not(:empty) {
+  padding: 8px 10px;
+  background: var(--warning-bg);
+  border-radius: var(--radius);
+}
+
+.form-refusal {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
 
 /* ==== ЖУРНАЛ ==== */
 .log {
@@ -327,11 +519,19 @@ a:focus-visible {
 
 /* ==== ТЕЛЕФОН ==== */
 /* В мобильном VK приложение открывается на всю ширину: поля вокруг карточки
-   там только съедают место под код. */
+   там только съедают место под код, а подпись поля встаёт над ним. */
 @media (max-width: 600px) {
   .app {
     margin: 0;
     padding: 12px;
     border-radius: 0;
+  }
+
+  .form-field {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .form-label {
+    grid-column: 1 / -1;
   }
 }

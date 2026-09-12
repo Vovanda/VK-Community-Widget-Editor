@@ -26,7 +26,7 @@ const LOG_PREVIEW_LENGTH = 80;
 const LOG_LIMIT = 10;
 
 /* ==== СНИППЕТ СЛУЧАЙНОСТИ ==== */
-// Типы виджетов, их схемы и шаблоны живут в widget-types.js.
+// Типы виджетов, их схемы и шаблоны живут в widget-types.js, форма — в widget-form.js.
 const RANDOM_SNIPPET = `// Случайные числа в VKScript: Math.random здесь нет, поэтому берём случайных друзей
 // донорского профиля. Разбор подхода: https://gist.github.com/Vovanda/b47f75287542eb1f62704d5881b3d1d8
 var count_of_randoms = 1;
@@ -56,6 +56,9 @@ const vkStatus = byId("vkStatus");
 const logBox = byId("log");
 const logList = byId("logList");
 const clearLogBtn = byId("clearLogBtn");
+const formTab = byId("formTab");
+const codeTab = byId("codeTab");
+const formView = byId("formView");
 
 /* ==== ХРАНЕНИЕ ==== */
 // localStorage в iframe VK бывает закрыт: приватный режим, запрет сторонних данных.
@@ -89,6 +92,7 @@ function inheritState() {
 function loadState() {
   const state = readStorage(STORAGE_KEY) ?? inheritState();
   if (!(state.widgetType in WIDGET_TYPES)) state.widgetType = "list";
+  if (state.view !== "form") state.view = "code";
   state.code ??= {};
   return state;
 }
@@ -103,7 +107,7 @@ let editor;
 const docs = {};
 
 function templateCode(type) {
-  return "return " + JSON.stringify(WIDGET_TYPES[type].template, null, 2) + ";";
+  return widgetToCode(WIDGET_TYPES[type].template);
 }
 
 function docFor(type) {
@@ -121,6 +125,8 @@ function onCodeChanged() {
   state.code[state.widgetType] = editor.getValue();
   saveState();
   updateHistoryButtons();
+  // Код поменялся не из формы — отмена, шаблон, правка во вкладке «Код»: форма вычитывает его заново.
+  if (state.view === "form" && !formWriting) refreshForm();
 }
 
 function switchType(type) {
@@ -128,6 +134,7 @@ function switchType(type) {
   editor.swapDoc(docFor(type));
   saveState();
   updateHistoryButtons();
+  if (state.view === "form") refreshForm();
 }
 
 function createEditor() {
@@ -140,6 +147,40 @@ function createEditor() {
   });
   editor.swapDoc(docFor(state.widgetType));
   editor.on("changes", onCodeChanged);
+}
+
+/* ==== ВИДЫ ==== */
+// Форма и код — два вида одного документа. Форма пишет в документ с origin "+form":
+// CodeMirror склеивает такие правки, и «Отменить» откатывает ввод словами, а не по букве.
+let formWriting = false;
+
+function writeCodeFromForm(code) {
+  const doc = editor.getDoc();
+  formWriting = true;
+  doc.replaceRange(code, doc.posFromIndex(0), doc.posFromIndex(doc.getValue().length), "+form");
+  formWriting = false;
+}
+
+function refreshForm() {
+  renderForm(formView, state.widgetType, editor.getValue(), writeCodeFromForm);
+}
+
+function showView(view) {
+  state.view = view;
+  saveState();
+  const inForm = view === "form";
+  formTab.setAttribute("aria-selected", String(inForm));
+  codeTab.setAttribute("aria-selected", String(!inForm));
+  editor.getWrapperElement().hidden = inForm;
+  formView.hidden = !inForm;
+  // Сниппет и форматирование работают с текстом кода — в форме им нечего делать.
+  randomBtn.disabled = inForm;
+  formatBtn.disabled = inForm;
+  if (inForm) {
+    refreshForm();
+  } else {
+    editor.refresh();
+  }
 }
 
 /* ==== ДЕЙСТВИЯ С КОДОМ ==== */
@@ -248,6 +289,8 @@ function fillTypeSelect() {
 
 function bindControls() {
   typeSelect.addEventListener("change", () => switchType(typeSelect.value));
+  formTab.addEventListener("click", () => showView("form"));
+  codeTab.addEventListener("click", () => showView("code"));
   undoBtn.addEventListener("click", () => editor.undo());
   redoBtn.addEventListener("click", () => editor.redo());
   templateBtn.addEventListener("click", applyTemplate);
@@ -261,6 +304,7 @@ function bindControls() {
 fillTypeSelect();
 createEditor();
 bindControls();
+showView(state.view);
 updateHistoryButtons();
 if (inheritedCode) {
   logMessage("У этого сообщества ещё не было своего кода: взят общий, сохранённый до разделения по группам. Он мог быть от другой группы, проверь перед установкой.");

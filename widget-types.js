@@ -70,6 +70,20 @@ const bothTeamIcons = match => Boolean(match?.team_a?.icon_id) === Boolean(match
 // Адрес для примеров: VK не пускает в виджет ничего, кроме своих доменов, даже "#".
 const SAMPLE_URL = "https://vk.com";
 
+// Подписи полей в форме: ключи VK английские, человеку нужны слова.
+const FIELD_LABELS = {
+  title: "Заголовок", title_url: "Ссылка заголовка", title_counter: "Счётчик",
+  more: "Текст подвала", more_url: "Ссылка подвала",
+  rows: "Строки", tiles: "Плитки", head: "Колонки", body: "Строки таблицы", matches: "Матчи",
+  button: "Кнопка", button_url: "Ссылка кнопки", icon_id: "Иконка, id", cover_id: "Обложка, id",
+  descr: "Описание", address: "Адрес", time: "Время работы", text: "Текст", text_url: "Ссылка текста",
+  url: "Ссылка", link: "Доп. ссылка", link_url: "Адрес доп. ссылки", align: "Выравнивание",
+  match: "Матч", state: "Состояние", team_a: "Команда A", team_b: "Команда B", name: "Название",
+  score: "Счёт", events: "События", event: "Игрок", minute: "Минута", live_url: "Трансляция",
+  date: "Период", start: "Начало, unixtime", end: "Конец, unixtime",
+  goal: "Цель", funded: "Собрано", backers: "Участников", currency: "Валюта",
+};
+
 /* ==== ТИПЫ ==== */
 const WIDGET_TYPES = {
   list: {
