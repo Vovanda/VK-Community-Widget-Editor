@@ -70,6 +70,12 @@
 }
 
 /* ==== КАРКАС ==== */
+/* hidden обязан прятать и то, чему стили дали display (grid, flex): иначе заглушка
+   и группа кнопок VK были бы видны всегда. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   font-family: var(--font-ui);
@@ -116,6 +122,90 @@ body {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* ==== ЗАГЛУШКА ВНЕ СООБЩЕСТВА ==== */
+/* Открыто в VK не из сообщества: вместо редактора — что это и как добавить. */
+.install {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.install h2 {
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+.install p {
+  margin: 0;
+  max-width: 60ch;
+  line-height: 1.45;
+}
+
+.install-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
+.install-try {
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.install-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 8px 14px;
+  font-size: 0.9375rem;
+  color: var(--primary-text);
+  background: var(--primary-bg);
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+
+.install-add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.install-shots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.install-shots figure {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.install-shots img {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.install-shots figcaption {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+  .install-shots {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ==== ВИДЫ ==== */
@@ -356,6 +446,10 @@ a:focus-visible {
 
 /* Предупреждение о хранении — под редактором, общее для формы и кода: код живёт
    в localStorage этого браузера, и потерять его можно, не заметив. */
+.storage-note a {
+  color: var(--accent);
+}
+
 .storage-note {
   display: flex;
   gap: var(--gap);

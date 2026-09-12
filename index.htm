@@ -17,6 +17,27 @@
     <p id="vkStatus" class="vk-status" role="status">Подключаюсь к VK…</p>
   </header>
 
+  <section id="installPlaceholder" class="install" aria-labelledby="installTitle" hidden>
+    <h2 id="installTitle">Редактор работает внутри сообщества</h2>
+    <p>Виджет ставится в сообщество, и код хранится для каждого сообщества отдельно. Добавьте приложение в своё сообщество и откройте его оттуда.</p>
+    <div class="install-actions">
+      <a class="install-add" href="https://vk.com/add_community_app.php?aid=7100465" target="_blank" rel="noopener"><i class="fa fa-plus" aria-hidden="true"></i>Добавить в сообщество</a>
+      <button type="button" id="tryHereBtn" class="install-try">Попробовать здесь</button>
+    </div>
+    <div class="install-shots">
+      <figure>
+        <img src="assets/vk-app/screen-nocode.png" width="1300" height="1544" alt="Форма без кода: строки виджета List заполняются полями">
+        <figcaption>Виджет без кода: поля в форме</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/vk-app/screen-code.png" width="1300" height="1504" alt="Код виджета на VKScript в редакторе">
+        <figcaption>Код на VKScript для тонкой настройки</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <p id="testModeNote" class="storage-note" hidden><i class="fa fa-flask" aria-hidden="true"></i>Тестовый режим: здесь можно посмотреть и попробовать редактор, но поставить виджет можно только из сообщества. <a href="https://vk.com/add_community_app.php?aid=7100465" target="_blank" rel="noopener">Добавить в сообщество</a></p>
+
   <div class="workspace">
     <div class="view-tabs" role="tablist" aria-label="Вид">
       <button type="button" role="tab" id="formTab" aria-selected="false" aria-controls="formView">Форма</button>

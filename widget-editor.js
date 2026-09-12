@@ -441,14 +441,36 @@ function fitVkFrame() {
 function onVkReady() {
   VK.addCallback("onAppWidgetPreviewFail", event =>
     logMessage("VK не показал предпросмотр: " + JSON.stringify(event)));
-  previewBtn.disabled = false;
-  permissionBtn.disabled = false;
-  vkStatus.textContent = GROUP_ID ? "Подключено к VK, сообщество " + GROUP_ID : "Подключено к VK";
+  if (GROUP_ID) {
+    previewBtn.disabled = false;
+    permissionBtn.disabled = false;
+    vkStatus.textContent = "Подключено к VK, сообщество " + GROUP_ID;
+  } else {
+    showInstallPlaceholder();
+  }
   // Внутри VK высота редактора не зависит от окна (см. .in-vk в стилях): окно — это фрейм,
   // который мы сами растягиваем, и 60vh тянули бы редактор следом, а он — фрейм, по кругу.
   document.documentElement.classList.add("in-vk");
   // Высота меняется от журнала, формы, свёрнутых блоков — следим за карточкой целиком.
   new ResizeObserver(fitVkFrame).observe(document.querySelector(".app"));
+}
+
+// Открыто по vk.ru/app7100465, а не из сообщества: виджет ставить некуда, код хранить
+// не за кем. Вместо редактора — что это и «Добавить в сообщество»; редактор можно
+// открыть на пробу, но без предпросмотра и прав: они работают только в сообществе.
+// Вне VK (страница на Pages) редактор остаётся как есть: там его проверяют и смотрят.
+function showInstallPlaceholder() {
+  document.querySelector(".tool-group-vk").hidden = true;
+  document.querySelector(".workspace").hidden = true;
+  byId("installPlaceholder").hidden = false;
+  vkStatus.textContent = "Подключено к VK, но не из сообщества";
+}
+
+function tryWithoutCommunity() {
+  byId("installPlaceholder").hidden = true;
+  byId("testModeNote").hidden = false;
+  document.querySelector(".workspace").hidden = false;
+  editor.refresh();
 }
 
 function connectVk() {
@@ -485,6 +507,7 @@ function bindControls() {
   previewBtn.addEventListener("click", showPreview);
   permissionBtn.addEventListener("click", requestPermission);
   clearLogBtn.addEventListener("click", clearLog);
+  byId("tryHereBtn").addEventListener("click", tryWithoutCommunity);
   setupMenu(snippetsBtn, snippetsMenu, snippetItems);
   setupMenu(versionsBtn, versionsMenu, versionItems);
 }

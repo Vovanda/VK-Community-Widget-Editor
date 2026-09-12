@@ -22,6 +22,8 @@ const SHOTS = process.env.SMOKE_SHOTS;   // папка для скриншото
 // 650 — ширина колонки, в которой VK показывает приложение на компьютере.
 const VK_FRAME_WIDTH = 650;
 const WIDTHS = [390, VK_FRAME_WIDTH, 768, 1200];
+// Поддельный VK открывается как из сообщества: без id сообщества вместо редактора заглушка.
+const FAKE_GROUP_ID = 1;
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -33,7 +35,7 @@ const browser = await chromium.launch(process.env.SMOKE_CHROME ? { executablePat
 // before и его аргумент уходят в addInitScript: он выполняется до скриптов страницы
 // при каждой загрузке, включая reload.
 // mobile — телефон по-настоящему: узкий экран, касания, без наведения (hover: none).
-async function openPage({ fakeVk, before, beforeArg, colorScheme = "light", url = URL, mobile = false } = {}) {
+async function openPage({ fakeVk, before, beforeArg, colorScheme = "light", url, mobile = false } = {}) {
   const context = await browser.newContext({
     viewport: mobile ? { width: 390, height: 844 } : { width: 1200, height: 900 },
     colorScheme, isMobile: mobile, hasTouch: mobile,
@@ -53,7 +55,7 @@ async function openPage({ fakeVk, before, beforeArg, colorScheme = "light", url 
     }));
   }
   if (before) await page.addInitScript(before, beforeArg);
-  await page.goto(url, { waitUntil: "load" });
+  await page.goto(url ?? (fakeVk ? URL + "?group_id=" + FAKE_GROUP_ID : URL), { waitUntil: "load" });
   await page.waitForSelector(".CodeMirror", { state: "attached" });
   return page;
 }
@@ -136,6 +138,8 @@ check(vkccHint.includes("статистик") && vkccHint.includes("редире
 const storageNote = await page.textContent("#storageNote");
 check(["браузере", "другого компьютера", "копию в файле"].every(part => storageNote.includes(part)),
   "предупреждение о хранении не говорит про браузер, другой компьютер или копию: " + storageNote);
+// Вне VK редактор остаётся: заглушка только для VK без сообщества.
+check(await page.isHidden("#installPlaceholder"), "вне VK видна заглушка «Добавить в сообщество»");
 
 /* ==== ТИПЫ И ОТМЕНА ==== */
 await setCode(page, 'return {"title":"мой список","rows":[]};');
@@ -419,9 +423,56 @@ await page.context().close();
   await context.close();
 }
 
+/* ==== VK БЕЗ СООБЩЕСТВА ==== */
+// Открыто по vk.ru/app7100465: виджет ставить некуда — заглушка со скринами и ссылкой.
+{
+  const lonely = await openPage({ fakeVk: true, url: URL + "?group_id=0", before: clearStorageOnce });
+  const placeholder = await lonely.evaluate(async () => {
+    const images = [...document.querySelectorAll("#installPlaceholder img")];
+    await Promise.all(images.map(img => img.complete ? null : new Promise(done => { img.onload = img.onerror = done; })));
+    return {
+      shown: !document.getElementById("installPlaceholder").hidden,
+      editor: !document.querySelector(".workspace").hidden,
+      link: document.querySelector("#installPlaceholder .install-add")?.href,
+      images: images.map(img => img.naturalWidth),
+      status: document.getElementById("vkStatus").textContent,
+    };
+  });
+  console.log("vk без сообщества:", JSON.stringify(placeholder));
+  check(placeholder.shown && !placeholder.editor, "в VK без сообщества нет заглушки или виден редактор");
+  check(placeholder.link === "https://vk.com/add_community_app.php?aid=7100465", "ссылка «Добавить в сообщество» не та: " + placeholder.link);
+  check(placeholder.images.length === 2 && placeholder.images.every(width => width > 0), "скриншоты заглушки не загрузились: " + placeholder.images);
+  if (SHOTS) {
+    for (const width of [390, VK_FRAME_WIDTH]) {
+      await lonely.setViewportSize({ width, height: 900 });
+      await lonely.screenshot({ path: `${SHOTS}/placeholder-${width}.png`, fullPage: true });
+    }
+  }
+  // «Попробовать здесь»: редактор открывается с предупреждением, но без предпросмотра и прав —
+  // ни кнопками, ни Ctrl+Enter: поставить виджет можно только из сообщества.
+  await lonely.setViewportSize({ width: 1200, height: 900 });
+  await lonely.click("#tryHereBtn");
+  await lonely.click(".CodeMirror");
+  await lonely.keyboard.press("Control+Enter");
+  const trial = await lonely.evaluate(() => ({
+    editor: !document.querySelector(".workspace").hidden,
+    placeholder: !document.getElementById("installPlaceholder").hidden,
+    note: !document.getElementById("testModeNote").hidden,
+    vkButtons: ["previewBtn", "permissionBtn"].filter(id => document.getElementById(id).getClientRects().length),
+    previews: window.__vkCalls.filter(call => call[0] !== "resizeWindow").length,
+  }));
+  console.log("тестовый режим:", JSON.stringify(trial));
+  check(trial.editor && !trial.placeholder && trial.note, "«Попробовать здесь» не открыл редактор с предупреждением");
+  check(!trial.vkButtons.length, "в тестовом режиме видны кнопки VK: " + trial.vkButtons.join(", "));
+  check(trial.previews === 0, "в тестовом режиме ушёл вызов VK: " + trial.previews);
+  if (SHOTS) await lonely.screenshot({ path: `${SHOTS}/trial-${VK_FRAME_WIDTH}.png` });
+  await lonely.context().close();
+}
+
 /* ==== ВНУТРИ VK (подделка) ==== */
 page = await openPage({ fakeVk: true, before: clearStorageOnce });
 check(!(await page.isDisabled("#previewBtn")), "в VK кнопка предпросмотра выключена");
+check(await page.isHidden("#installPlaceholder"), "в сообществе видна заглушка вместо редактора");
 
 // VK сам iframe не растягивает: страница сообщает высоту — низ карточки плюс поле.
 const appHeight = () => page.evaluate(() =>
