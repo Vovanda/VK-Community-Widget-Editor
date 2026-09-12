@@ -101,6 +101,9 @@ const iconFont = await page.evaluate(async () => {
   return document.fonts.check('900 16px "Font Awesome 6 Free"');
 });
 check(iconFont, "шрифт иконок не загрузился: вместо иконок будут квадраты");
+// Подсказка про VK CC говорит, зачем он нужен и где подводит.
+const vkccHint = await page.textContent("#vkccHint");
+check(vkccHint.includes("статистик") && vkccHint.includes("редирект"), "подсказка про VK CC без статистики или без риска: " + vkccHint);
 
 /* ==== ТИПЫ И ОТМЕНА ==== */
 await setCode(page, 'return {"title":"мой список","rows":[]};');
