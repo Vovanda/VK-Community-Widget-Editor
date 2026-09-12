@@ -83,10 +83,18 @@ console.log("вне VK:", JSON.stringify(outside));
 check(/вне VK/.test(outside.status), "статус не говорит, что страница открыта вне VK: " + outside.status);
 check(outside.preview && outside.permission, "кнопки VK включены вне VK");
 check(outside.logHidden, "журнал сообщений виден, хотя сообщений нет");
-check(outside.types === 8, "типов виджета не 8: " + outside.types);
+check(outside.types === 9, "типов виджета не 9: " + outside.types);
 const typeValues = await page.evaluate(() => [...document.getElementById("widgetType").options].map(o => o.value));
 check(typeValues[0] === "list", "первым в списке не List: " + typeValues[0]);
-check(!typeValues.includes("text"), "в списке остался Text");
+check(typeValues.at(-1) === "text", "Text не последним в списке: " + typeValues.join(", "));
+// Форма Text собирается в отдельном контейнере, чтобы не трогать состояние страницы.
+const textFormLabels = await page.evaluate(() => {
+  const box = document.createElement("div");
+  renderForm(box, "text", widgetToCode(WIDGET_TYPES.text.template), () => {}, {});
+  return [...box.querySelectorAll("label")].map(label => label.textContent.trim());
+});
+check(["Заголовок", "Текст", "Описание"].every(label => textFormLabels.some(t => t.startsWith(label))),
+  "форма Text без полей заголовка, текста или описания: " + textFormLabels.join(", "));
 
 // Шаблон каждого типа обязан проходить схему из доки VK: иначе «Шаблон» подсовывает виджет, который VK не примет.
 const templateProblems = await page.evaluate(() => Object.keys(WIDGET_TYPES)

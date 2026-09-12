@@ -169,6 +169,12 @@ const WIDGET_TYPES = {
     },
     template: { title: "Поддержать", text: "На помощь животным", button_url: SAMPLE_URL, goal: 80000, funded: 7000, backers: 20, currency: "RUB", date: { start: 1700000000, end: 1701000000 } },
   },
+  // Text — самый простой тип, поэтому последним: список начинается с того, что нужно чаще.
+  text: {
+    label: "Text",
+    fields: { ...HEADER_FOOTER, text: strField(200), descr: strField(200) },
+    template: { title: "Цитата дня", text: "«Нам нужно гордиться»", descr: "Подпись под цитатой" },
+  },
 };
 
 /* ==== ПРОВЕРКА ==== */
