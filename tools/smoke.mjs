@@ -502,16 +502,25 @@ for (const view of ["code", "form"]) {
         .filter(part => part && part.getClientRects().length);
       const widest = Math.max(...parts.map(part => part.getBoundingClientRect().right));
       const note = document.getElementById("storageNote").getBoundingClientRect();
+      // Рамка формы держится, а содержимое внутри неё может уехать под прокрутку:
+      // так длинный заголовок элемента выталкивал «Добавить» и крестики за край.
+      const form = document.getElementById("formView");
+      const formRight = form.getBoundingClientRect().right - form.clientLeft;
+      const pushedOut = [...form.querySelectorAll("button")]
+        .filter(button => button.getClientRects().length && button.getBoundingClientRect().right > formRight + 1)
+        .map(button => button.textContent.trim() || button.getAttribute("aria-label"));
       return {
         page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         spill: Math.round(widest - card.right),
         note: note.width > 0 && note.height > 0,
+        pushedOut: [...new Set(pushedOut)].slice(0, 3),
       };
     });
     const where = `${view === "code" ? "код" : "форма"} на ${width}px`;
     check(fit.page <= 1 && fit.spill <= 0,
       `${where}: страница уезжает на ${fit.page}px, блок шире карточки на ${fit.spill}px`);
     check(fit.note, `${where}: не видно предупреждения о хранении`);
+    check(!fit.pushedOut.length, `${where}: кнопки за правым краем формы: ${fit.pushedOut.join(", ")}`);
   }
 }
 await page.click("#codeTab");

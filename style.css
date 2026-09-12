@@ -479,8 +479,12 @@ a:focus-visible {
   font-weight: 600;
 }
 
+/* Колонка minmax(0, 1fr), как у .app: неявная колонка auto растягивается по
+   min-content карточки, то есть по заголовку элемента во всю длину, и длинный
+   заголовок выталкивал «Добавить» и крестики за край формы. */
 .form-array {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
 }
 
@@ -667,6 +671,7 @@ a:focus-visible {
 
 .form-block-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--gap);
   padding: 8px 0 4px;
 }
