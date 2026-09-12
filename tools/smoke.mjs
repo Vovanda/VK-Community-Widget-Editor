@@ -294,10 +294,21 @@ await page.click("#formatBtn");
 check(await code(page) === formatted, "повторное форматирование меняет код");
 
 /* ==== ПАМЯТЬ ==== */
+await setCode(page, "return {\"title\":\"до перезагрузки\"};");
 await setCode(page, "return {\"title\":\"после перезагрузки\"};");
 await page.reload({ waitUntil: "load" });
 await page.waitForSelector(".CodeMirror", { state: "attached" });
 check((await code(page)).includes("после перезагрузки"), "код не пережил перезагрузку");
+// История отмены хранится рядом с кодом: «Отменить» работает и после перезагрузки.
+check(!(await page.isDisabled("#undoBtn")), "после перезагрузки «Отменить» выключена");
+await page.click("#undoBtn");
+check((await code(page)).includes("до перезагрузки"), "«Отменить» после перезагрузки не вернула прежний код");
+// Глубина истории ограничена у каждого документа, иначе хранилище растёт без предела.
+const depthOf = () => page.evaluate(() => document.querySelector(".CodeMirror").CodeMirror.getDoc().history.undoDepth);
+check(await depthOf() === 200, "глубина истории List не 200: " + await depthOf());
+await page.selectOption("#widgetType", "tiles");
+check(await depthOf() === 200, "глубина истории Tiles не 200: " + await depthOf());
+await page.selectOption("#widgetType", "list");
 await page.context().close();
 
 // Старый формат хранил массив версий на тип. Берём последнюю, а сам ключ не трогаем:

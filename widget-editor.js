@@ -24,6 +24,8 @@ const LEGACY_STORAGE_KEY = "vk_widget_editor_state";
 const BEAUTIFY_OPTIONS = { indent_size: 2, brace_style: "collapse,preserve-inline" };
 const LOG_PREVIEW_LENGTH = 80;
 const LOG_LIMIT = 10;
+// Глубина истории отмены, которая хранится в localStorage вместе с кодом.
+const HISTORY_DEPTH = 200;
 
 /* ==== СНИППЕТЫ ==== */
 // Типы виджетов, их схемы и шаблоны живут в widget-types.js, форма — в widget-form.js.
@@ -134,8 +136,20 @@ function templateCode(type) {
   return widgetToCode(WIDGET_TYPES[type].template);
 }
 
+// История отмены хранится рядом с кодом, поэтому «Отменить» работает и после
+// перезагрузки. Документ из new CodeMirror.Doc получает бесконечную глубину истории
+// (опция редактора undoDepth достаётся только открытому документу), поэтому глубина
+// ставится каждому документу явно — иначе хранилище росло бы без предела.
+// История применяется, только если длина кода та же: иначе отмена накатила бы
+// дельты на чужой текст и испортила его.
 function docFor(type) {
-  docs[type] ??= new CodeMirror.Doc(state.code[type] ?? templateCode(type), "javascript");
+  if (!docs[type]) {
+    const doc = new CodeMirror.Doc(state.code[type] ?? templateCode(type), "javascript");
+    doc.history.undoDepth = HISTORY_DEPTH;
+    const saved = state.history?.[type];
+    if (saved && saved.length === doc.getValue().length) doc.setHistory(saved.data);
+    docs[type] = doc;
+  }
   return docs[type];
 }
 
@@ -152,7 +166,9 @@ function updateTemplateButton() {
 }
 
 function onCodeChanged() {
-  state.code[state.widgetType] = editor.getValue();
+  const code = editor.getValue();
+  state.code[state.widgetType] = code;
+  (state.history ??= {})[state.widgetType] = { length: code.length, data: editor.getDoc().getHistory() };
   saveState();
   updateHistoryButtons();
   updateTemplateButton();
