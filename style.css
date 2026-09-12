@@ -71,8 +71,11 @@ body {
   background: var(--bg);
 }
 
+/* Колонка minmax(0, 1fr), а не auto: у элемента grid минимальная ширина — ширина
+   содержимого, и длинные строки скрипта в CodeMirror распирали блок вместе с панелью. */
 .app {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   max-width: 960px;
   margin: 16px auto;
@@ -276,6 +279,7 @@ a:focus-visible {
    панель и кнопка предпросмотра остаются на месте. */
 .form-view {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 10px;
   height: var(--editor-height);

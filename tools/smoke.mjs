@@ -385,6 +385,34 @@ const focusedLabel = await page.evaluate(() => {
 });
 check(focusedLabel === "1", "подпись не видна при фокусе с клавиатуры: " + focusedLabel);
 
+// Вёрстка не зависит от содержимого и окна: длинные строки скрипта не распирают блок
+// ни в коде, ни в форме — на любой ширине от телефона до широкого монитора.
+await setCode(page, veoomsk);
+for (const view of ["code", "form"]) {
+  await page.click(view === "code" ? "#codeTab" : "#formTab");
+  for (const width of [320, 390, 650, 768, 1024, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    const fit = await page.evaluate(() => {
+      const card = document.querySelector(".app").getBoundingClientRect();
+      const parts = [".workspace", ".toolbar", ".CodeMirror", "#formView"]
+        .map(selector => document.querySelector(selector))
+        .filter(part => part && part.getClientRects().length);
+      const widest = Math.max(...parts.map(part => part.getBoundingClientRect().right));
+      return {
+        page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        spill: Math.round(widest - card.right),
+      };
+    });
+    check(fit.page <= 1 && fit.spill <= 0,
+      `${view === "code" ? "код" : "форма"} на ${width}px: страница уезжает на ${fit.page}px, блок шире карточки на ${fit.spill}px`);
+  }
+}
+await page.click("#codeTab");
+if (SHOTS) {
+  await page.setViewportSize({ width: VK_FRAME_WIDTH, height: 900 });
+  await page.screenshot({ path: `${SHOTS}/code-long-${VK_FRAME_WIDTH}.png` });
+}
+
 /* ==== ТЕМЫ ==== */
 // Тёмная тема берётся из настройки системы: фон обязан смениться целиком, иначе
 // в тёмном VK останется белая карточка.
