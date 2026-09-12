@@ -34,6 +34,8 @@ async function openPage({ fakeVk, before, beforeArg, colorScheme = "light" } = {
   const context = await browser.newContext({ viewport: { width: 1200, height: 900 }, colorScheme });
   const page = await context.newPage();
   page.on("pageerror", e => problems.push("ошибка скрипта: " + e.message));
+  // cdnjs — это Cloudflare, в РФ его режут: всё стороннее обязано приезжать из vendor/.
+  await page.route(/cdnjs.cloudflare.com/, route => route.abort());
   if (fakeVk) {
     // Скрипты VK подменяются заглушкой: init сразу успешен, вызовы копятся в __vkCalls.
     await page.route(/vk\.com\/js\/api\//, route => route.fulfill({
@@ -78,6 +80,11 @@ check(outside.logHidden, "журнал сообщений виден, хотя �
 check(outside.types === 9, "типов виджета не 9: " + outside.types);
 check(outside.type === "list", "первый запуск открыл не List: " + outside.type);
 check((await code(page)).includes("Рестораны"), "при первом запуске нет шаблона списка");
+const iconFont = await page.evaluate(async () => {
+  await document.fonts.ready;
+  return document.fonts.check('900 16px "Font Awesome 6 Free"');
+});
+check(iconFont, "шрифт иконок не загрузился: вместо иконок будут квадраты");
 
 /* ==== ТИПЫ И ОТМЕНА ==== */
 await setCode(page, 'return {"title":"мой список","rows":[]};');
