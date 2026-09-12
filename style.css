@@ -1,180 +1,238 @@
-/* Базовые стили */
+/* ==== ПАЛИТРА ==== */
+/* Морская палитра задана владельцем: глубокая вода, океан, волна, пена.
+   Любой цвет страницы берётся отсюда, вне этого блока цветов нет. */
+:root {
+  --deep: #003b46;          /* текст и рамки */
+  --ocean: #07575b;         /* кнопки */
+  --ocean-hover: #0a7d80;
+  --wave: #66a5ad;          /* панель инструментов */
+  --foam: #c4dfe6;          /* фон приложения */
+  --paper: #ffffff;         /* редактор и главная кнопка */
+  --alert: #f8ca9d;         /* журнал сообщений */
+  --alert-edge: #f2cf59;
+  --shadow: rgba(0, 59, 70, 0.18);
+
+  --radius: 6px;
+  --radius-panel: 12px;
+  --gap: 8px;
+  --pad: 20px;
+  --editor-height: clamp(320px, 60vh, 640px);
+
+  /* Шрифт как у самого VK: приложение открывается внутри него и не должно
+     выглядеть вставкой с чужого сайта. */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --font-code: Consolas, "SF Mono", Menlo, monospace;
+}
+
+/* ==== КАРКАС ==== */
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #ffffff; /* фон белый */
   margin: 0;
-  padding: 0;
-  color: #003b46; /* глубокая вода */
+  font-family: var(--font-ui);
+  color: var(--deep);
+  background: var(--paper);
 }
 
-.container {
-  max-width: 900px;
-  margin: 15px auto;
-  padding: 20px;
-  background: #c4dfe6; /* морская пена */
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+.app {
+  display: grid;
+  gap: 16px;
+  max-width: 960px;
+  margin: 16px auto;
+  padding: var(--pad);
+  background: var(--foam);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 6px 18px var(--shadow);
 }
 
-.header h1 {
-  font-weight: 700;
-  color: #66a5ad; /* волна */
-  font-size: 1em;
-  text-align: center;
-  margin-bottom: 20px;
-  margin-top: 0px;
-}
-
-/* Тулбар */
-.toolbar {
+.app-head {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 15px;
-  background: #66a5ad; /* волна */
-  border-radius: 8px 8px 0 0;
   flex-wrap: wrap;
-}
-
-.toolbar-left,
-.toolbar-center,
-.toolbar-right {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.toolbar-left button,
-.toolbar-center button,
-.toolbar-right button,
-select#widget-type {
-  flex: 1 1 auto;
-  text-align: center;
-  background: #07575b; /* океан */
-  color: #ffffff;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.toolbar-left button:hover,
-.toolbar-center button:hover,
-.toolbar-right button:hover,
-select#widget-type:hover {
-  background: #0a7d80; /* насыщенный океан */
-}
-
-/* Адаптив для мобильного */
-@media (max-width: 600px) {
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .toolbar-left,
-  .toolbar-center,
-  .toolbar-right {
-    flex-direction: row;
-    justify-content: space-between;
-    margin-bottom: 6px;
-  }
-
-  .toolbar-left button,
-  .toolbar-center button,
-  .toolbar-right button,
-  select#widget-type {
-    flex: 1;
-    margin: 0 3px;
-  }
-}
-
-/* Редактор и textarea */
-#editor {
-  height: 350px;
-  background: #ffffff;
-  border-radius: 8px;
-  border: 2px solid #003b46; /* глубокая вода */
-  padding: 5px;
-}
-
-/* Блок ошибок */
-.error-bar {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  background: #f2cf59; /* пастельно-жёлтый */
-  border: 1px solid #f8ca9d;
-  padding: 5px 10px;
-  overflow-x: auto;
+  align-items: baseline;
+  gap: var(--gap);
 }
 
-.error-log {
-  display: flex;
-  flex-direction: row-reverse;
-  gap: 6px;
+.app-head h1 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.vk-status {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
-.error-log details {
-  background: #f8ca9d;
-  padding: 4px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #003b46;
-  font-weight: 500;
-  transition: 0.2s;
-}
-
-.error-log details:hover {
-  background: #f2cf59;
-}
-
-.error-bar button {
-  flex-shrink: 0;
-  background: #ff0000;
-  border: none;
-  color: white;
-  cursor: pointer;
-  font-size: 1.2em;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
+/* ==== ПАНЕЛЬ ИНСТРУМЕНТОВ ==== */
+.toolbar {
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap) 16px;
+  padding: 10px 12px;
+  background: var(--wave);
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+}
+
+.tool-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Действия VK прижаты вправо: они уходят наружу, в VK, а не правят код. */
+.tool-group-vk {
+  margin-left: auto;
+}
+
+.toolbar button,
+.toolbar select {
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--ocean);
+  border: 0;
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.toolbar button:hover:not(:disabled),
+.toolbar select:hover {
+  background: var(--ocean-hover);
+}
+
+.toolbar .primary {
+  color: var(--deep);
+  background: var(--paper);
+}
+
+.toolbar .primary:hover:not(:disabled) {
+  background: var(--foam);
+}
+
+.toolbar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--deep);
+  outline-offset: 2px;
+}
+
+/* ==== РЕДАКТОР ==== */
+.workspace .CodeMirror {
+  height: var(--editor-height);
+  font-family: var(--font-code);
+  font-size: 14px;
+  border: 2px solid var(--deep);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
+}
+
+/* ==== ЖУРНАЛ ==== */
+.log {
+  padding: 10px 12px;
+  background: var(--alert);
+  border: 1px solid var(--alert-edge);
+  border-radius: var(--radius-panel);
+}
+
+.log-head {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
+  gap: var(--gap);
 }
 
-/* Ссылки и подсказки */
-.links, .hint {
-  margin-top: 15px;
-  font-size: 0.9em;
+.log-head h2 {
+  margin: 0;
+  font-size: 0.9375rem;
 }
 
-.links a, .hint a {
-  color: #003b46;
-  text-decoration: none;
+.log-clear {
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--deep);
+  background: none;
+  border: 1px solid var(--deep);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.log-list {
+  display: grid;
+  gap: 4px;
+  margin: var(--gap) 0 0;
+  padding-left: 20px;
+  font-size: 0.875rem;
+}
+
+.log-list summary {
+  cursor: pointer;
+}
+
+.log-list pre {
+  margin: 4px 0 0;
+  font-family: var(--font-code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ==== ПОДВАЛ ==== */
+.app-foot {
+  display: grid;
+  gap: var(--gap);
+  font-size: 0.875rem;
+}
+
+.app-foot p {
+  margin: 0;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.app-foot a {
+  color: var(--deep);
   font-weight: 600;
+  text-decoration: none;
 }
 
-.links a:hover, .hint a:hover {
+.app-foot a:hover {
   text-decoration: underline;
 }
-.creator {
+
+.credit {
   text-align: center;
-  margin-top: 20px;
-  font-size: 0.85em;
-  color: #003b46; /* глубокая вода */
 }
 
-.creator a {
-  color: #003b46;
-  text-decoration: none;
-  font-weight: 600;
-}
+/* ==== ТЕЛЕФОН ==== */
+/* В мобильном VK приложение открывается на всю ширину: рамка и поля вокруг
+   карточки там только съедают место под код. */
+@media (max-width: 600px) {
+  .app {
+    margin: 0;
+    padding: 12px;
+    border-radius: 0;
+    box-shadow: none;
+  }
 
-.creator a:hover {
-  text-decoration: underline;
+  .tool-group-vk {
+    margin-left: 0;
+  }
 }
