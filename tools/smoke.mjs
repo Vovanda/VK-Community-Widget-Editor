@@ -156,6 +156,18 @@ check(calls[2]?.[0] === "showGroupSettingsBox" && calls[2][1] === 64, "прав�
 await page.evaluate(() => window.__vkCallbacks.onAppWidgetPreviewFail({ error_msg: "тест" }));
 check(!(await page.evaluate(() => document.getElementById("log").hidden)), "ошибка VK не показана в журнале");
 
+// Журнал не копит мусор: повтор одной ошибки — одна строка со счётчиком, всего не больше 10.
+const failPreview = message => page.evaluate(m => window.__vkCallbacks.onAppWidgetPreviewFail({ error_msg: m }), message);
+for (let i = 0; i < 9; i++) await failPreview("тест");
+const repeated = await page.evaluate(() => ({
+  rows: document.querySelectorAll("#logList li").length,
+  count: document.querySelector("#logList .log-count").textContent,
+}));
+check(repeated.rows === 1 && repeated.count === "×10", "повтор ошибки не схлопнулся: " + JSON.stringify(repeated));
+for (let i = 0; i < 15; i++) await failPreview("разная " + i);
+const logRows = await page.evaluate(() => document.querySelectorAll("#logList li").length);
+check(logRows === 10, "в журнале не 10 строк, а " + logRows);
+
 /* ==== ШИРИНЫ ==== */
 const unlabeled = await page.evaluate(() => [...document.querySelectorAll(".toolbar button")]
   .filter(button => !button.getAttribute("aria-label") || !button.title).map(button => button.id));

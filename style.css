@@ -252,6 +252,11 @@ a:focus-visible {
   cursor: pointer;
 }
 
+.log-count {
+  margin-left: 6px;
+  font-weight: 600;
+}
+
 .log-list pre {
   margin: 4px 0 0;
   font-family: var(--font-code);

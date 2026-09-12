@@ -13,6 +13,7 @@ const LEGACY_STORAGE_KEY = "vk_widget_editor_state";
 // из шаблона veoomsk разъезжается с 112 строк до 250.
 const BEAUTIFY_OPTIONS = { indent_size: 2, brace_style: "collapse,preserve-inline" };
 const LOG_PREVIEW_LENGTH = 80;
+const LOG_LIMIT = 10;
 
 /* ==== ШАБЛОНЫ ==== */
 // Тип виджета -> подпись и пример кода. Список типов на странице строится отсюда.
@@ -157,20 +158,34 @@ function formatCode() {
 
 /* ==== ЖУРНАЛ ==== */
 function logMessage(text) {
+  // VK повторяет одну и ту же ошибку на каждый предпросмотр: подряд это один факт,
+  // а не новые строки, поэтому растёт счётчик у верхней записи.
+  const top = logList.firstElementChild;
+  if (top?.dataset.text === text) {
+    top.dataset.count = Number(top.dataset.count) + 1;
+    top.querySelector(".log-count").textContent = "×" + top.dataset.count;
+    return;
+  }
   const item = document.createElement("li");
+  item.dataset.text = text;
+  item.dataset.count = "1";
+  const count = document.createElement("span");
+  count.className = "log-count";
   const line = new Date().toLocaleTimeString("ru-RU") + " " + text;
   if (line.length <= LOG_PREVIEW_LENGTH) {
-    item.textContent = line;
+    item.append(line, count);
   } else {
     const details = document.createElement("details");
     const summary = document.createElement("summary");
     const full = document.createElement("pre");
-    summary.textContent = line.slice(0, LOG_PREVIEW_LENGTH) + "…";
+    summary.append(line.slice(0, LOG_PREVIEW_LENGTH) + "…", count);
     full.textContent = line;
     details.append(summary, full);
     item.append(details);
   }
   logList.prepend(item);
+  // Старые ошибки уже не про текущий код: держим только последние.
+  while (logList.children.length > LOG_LIMIT) logList.lastElementChild.remove();
   logBox.hidden = false;
 }
 
