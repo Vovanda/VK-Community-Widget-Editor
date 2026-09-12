@@ -26,7 +26,9 @@ const check = (ok, what) => { if (!ok) problems.push(what); return ok; };
 
 const browser = await chromium.launch(process.env.SMOKE_CHROME ? { executablePath: process.env.SMOKE_CHROME } : {});
 
-async function openPage({ fakeVk, before, colorScheme = "light" } = {}) {
+// before и его аргумент уходят в addInitScript: он выполняется до скриптов страницы
+// при каждой загрузке, включая reload.
+async function openPage({ fakeVk, before, beforeArg, colorScheme = "light" } = {}) {
   const context = await browser.newContext({ viewport: { width: 1200, height: 900 }, colorScheme });
   const page = await context.newPage();
   page.on("pageerror", e => problems.push("ошибка скрипта: " + e.message));
@@ -40,14 +42,14 @@ async function openPage({ fakeVk, before, colorScheme = "light" } = {}) {
                            addCallback(name, fn) { __vkCallbacks[name] = fn; } };`,
     }));
   }
-  if (before) await page.addInitScript(before);
+  if (before) await page.addInitScript(before, beforeArg);
   await page.goto(URL, { waitUntil: "load" });
   await page.waitForSelector(".CodeMirror");
   return page;
 }
 
-// Init-скрипт выполняется при каждой загрузке, включая reload: чистим хранилище
-// один раз на вкладку, иначе проверка «код пережил перезагрузку» стирает сам код.
+// Хранилище чистится один раз на вкладку, иначе проверка «код пережил
+// перезагрузку» стирает сам код.
 const clearStorageOnce = () => {
   if (sessionStorage.getItem("smokeCleared")) return;
   sessionStorage.setItem("smokeCleared", "1");
@@ -65,28 +67,30 @@ const outside = await page.evaluate(() => ({
   permission: document.getElementById("permissionBtn").disabled,
   logHidden: document.getElementById("log").hidden,
   types: document.getElementById("widgetType").options.length,
+  type: document.getElementById("widgetType").value,
 }));
 console.log("вне VK:", JSON.stringify(outside));
 check(/вне VK/.test(outside.status), "статус не говорит, что страница открыта вне VK: " + outside.status);
 check(outside.preview && outside.permission, "кнопки VK включены вне VK");
 check(outside.logHidden, "журнал сообщений виден, хотя сообщений нет");
 check(outside.types === 9, "типов виджета не 9: " + outside.types);
-check((await code(page)).includes("Цитата дня"), "при первом запуске нет шаблона текста");
+check(outside.type === "list", "первый запуск открыл не List: " + outside.type);
+check((await code(page)).includes("Рестораны"), "при первом запуске нет шаблона списка");
 
 /* ==== ТИПЫ И ОТМЕНА ==== */
-await setCode(page, 'return {"title":"мой текст"};');
-await page.selectOption("#widgetType", "list");
-check((await code(page)).includes('"rows"'), "у списка не подставился шаблон");
-check(await page.isDisabled("#undoBtn"), "«Отменить» в свежем типе активна: история чужого типа");
+await setCode(page, 'return {"title":"мой список","rows":[]};');
 await page.selectOption("#widgetType", "text");
-check((await code(page)).includes("мой текст"), "код текста потерялся при переключении типа");
+check((await code(page)).includes("Цитата дня"), "у текста не подставился шаблон");
+check(await page.isDisabled("#undoBtn"), "«Отменить» в свежем типе активна: история чужого типа");
+await page.selectOption("#widgetType", "list");
+check((await code(page)).includes("мой список"), "код списка потерялся при переключении типа");
 
 await page.click("#templateBtn");
-check((await code(page)).includes("Цитата дня"), "«Шаблон» не заменил код");
+check((await code(page)).includes("Рестораны"), "«Шаблон» не заменил код");
 await page.click("#undoBtn");
-check((await code(page)).includes("мой текст"), "«Отменить» не вернула код после шаблона");
+check((await code(page)).includes("мой список"), "«Отменить» не вернула код после шаблона");
 await page.click("#redoBtn");
-check((await code(page)).includes("Цитата дня"), "«Повторить» не сработала");
+check((await code(page)).includes("Рестораны"), "«Повторить» не сработала");
 
 await page.click("#randomBtn");
 check((await code(page)).startsWith("// Случайные числа"), "генератор не вставился в начало");
@@ -109,17 +113,22 @@ await page.waitForSelector(".CodeMirror");
 check((await code(page)).includes("после перезагрузки"), "код не пережил перезагрузку");
 await page.context().close();
 
-// Старый формат хранил массив версий на тип; берём последнюю, старый ключ удаляем.
-page = await openPage({ before: () => {
-  if (sessionStorage.getItem("seeded")) return;
-  sessionStorage.setItem("seeded", "1");
-  localStorage.clear();
-  localStorage.setItem("vk_widget_editor_state", JSON.stringify({
-    widgetType: "list", history: { list: ["return 1;", "return 2;"], text: [] } }));
-} });
+// Старый формат хранил массив версий на тип. Берём последнюю, а сам ключ не трогаем:
+// в нём вся история, и ранние скрипты владельца могут жить только там.
+const LEGACY = JSON.stringify({ widgetType: "list", history: { list: ["return 1;", "return 2;"], text: [] } });
+page = await openPage({
+  before: legacy => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.clear();
+    localStorage.setItem("vk_widget_editor_state", legacy);
+  },
+  beforeArg: LEGACY,
+});
 check(await page.inputValue("#widgetType") === "list", "после миграции открыт не прежний тип");
 check(await code(page) === "return 2;", "миграция взяла не последнюю версию кода");
-check(await page.evaluate(() => localStorage.getItem("vk_widget_editor_state")) === null, "старый ключ не удалён");
+check(await page.evaluate(() => localStorage.getItem("vk_widget_editor_state")) === LEGACY,
+  "старая история изменена или удалена");
 await page.context().close();
 
 /* ==== ВНУТРИ VK (подделка) ==== */
@@ -131,7 +140,7 @@ await page.keyboard.press("Control+Enter");
 await page.click("#permissionBtn");
 const calls = await page.evaluate(() => window.__vkCalls);
 console.log("вызовы VK:", JSON.stringify(calls).slice(0, 200));
-check(calls[0]?.[0] === "showAppWidgetPreviewBox" && calls[0][1] === "text" && calls[0][2].includes("Цитата дня"),
+check(calls[0]?.[0] === "showAppWidgetPreviewBox" && calls[0][1] === "list" && calls[0][2].includes("Рестораны"),
   "предпросмотр ушёл в VK не с теми аргументами");
 check(calls[1]?.[0] === "showAppWidgetPreviewBox", "Ctrl+Enter не открыл предпросмотр");
 check(calls[2]?.[0] === "showGroupSettingsBox" && calls[2][1] === 64, "права запрошены не с тем битом");

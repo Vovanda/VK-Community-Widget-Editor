@@ -75,13 +75,12 @@ function migrateLegacyState() {
   for (const [type, versions] of Object.entries(legacy?.history ?? {})) {
     if (versions.length) code[type] = versions[versions.length - 1];
   }
-  try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
   return { widgetType: legacy?.widgetType, code };
 }
 
 function loadState() {
   const state = readStorage(STORAGE_KEY) ?? migrateLegacyState();
-  if (!(state.widgetType in WIDGET_TYPES)) state.widgetType = "text";
+  if (!(state.widgetType in WIDGET_TYPES)) state.widgetType = "list";
   state.code ??= {};
   return state;
 }
