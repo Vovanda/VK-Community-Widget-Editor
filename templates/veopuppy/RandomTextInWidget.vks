@@ -78,8 +78,8 @@ if (!is_member) {
 }
 
 // === Выбор случайного сообщения из выбранной темы через rnd_values[1] ===
-var msg_index = parseInt(rnd_values[1] * chosen_topic.length + 0.5);
-if (msg_index >= chosen_topic.length) { msg_index = chosen_topic.length - 1; }
+// Дробная часть отбрасывается: у каждого сообщения темы равная доля, а при rnd < 1 индекс не выходит за длину
+var msg_index = parseInt(rnd_values[1] * chosen_topic.length);
 
 var stub_item = {
     "title": "Рады Вас видеть",
