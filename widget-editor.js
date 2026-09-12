@@ -15,19 +15,8 @@ const BEAUTIFY_OPTIONS = { indent_size: 2, brace_style: "collapse,preserve-inlin
 const LOG_PREVIEW_LENGTH = 80;
 const LOG_LIMIT = 10;
 
-/* ==== ШАБЛОНЫ ==== */
-// Тип виджета -> подпись и пример кода. Список типов на странице строится отсюда.
-const WIDGET_TYPES = {
-  list: { label: "List", template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", button_url: "#", descr: "Вид на стрелку" }] } },
-  table: { label: "Table", template: { title: "Таблица", head: [{ text: "Колонка 1" }], body: [[{ text: "Ячейка" }]] } },
-  tiles: { label: "Tiles", template: { title: "Фильмы", tiles: [{ title: "Доктор Стрэндж", descr: "Фэнтези", url: "#", link: "Купить", link_url: "#" }] } },
-  compact_list: { label: "Compact list", template: { title: "Компактный список", rows: [{ title: "Элемент", button: "Подробнее", button_url: "#", descr: "Описание" }] } },
-  cover_list: { label: "Cover list", template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", cover_id: "12345_6789", url: "#", button_url: "#", descr: "Описание" }] } },
-  match: { label: "Match", template: { title: "Матч", match: { state: "Идёт первый тайм", team_a: { name: "Зенит" }, team_b: { name: "Спартак" }, score: { team_a: 2, team_b: 0 } } } },
-  matches: { label: "Matches", template: { title: "Список матчей", matches: [{ team_a: { name: "Зенит" }, team_b: { name: "Спартак" }, score: { team_a: 2, team_b: 0 }, icon_id: "123_456" }] } },
-  donation: { label: "Donation", template: { title: "Поддержать", text: "На помощь животным", button_url: "#", goal: 80000, funded: 7000, backers: 20, currency: "RUB", date: { start: 1700000000, end: 1701000000 } } },
-};
-
+/* ==== СНИППЕТ СЛУЧАЙНОСТИ ==== */
+// Типы виджетов, их схемы и шаблоны живут в widget-types.js.
 const RANDOM_SNIPPET = `// Случайные числа в VKScript: Math.random здесь нет, поэтому берём случайных друзей
 // донорского профиля. Разбор подхода: https://gist.github.com/Vovanda/b47f75287542eb1f62704d5881b3d1d8
 var count_of_randoms = 1;

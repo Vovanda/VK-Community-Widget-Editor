@@ -81,6 +81,14 @@ check(outside.types === 8, "типов виджета не 8: " + outside.types)
 const typeValues = await page.evaluate(() => [...document.getElementById("widgetType").options].map(o => o.value));
 check(typeValues[0] === "list", "первым в списке не List: " + typeValues[0]);
 check(!typeValues.includes("text"), "в списке остался Text");
+
+// Шаблон каждого типа обязан проходить схему из доки VK: иначе «Шаблон» подсовывает виджет, который VK не примет.
+const templateProblems = await page.evaluate(() => Object.keys(WIDGET_TYPES)
+  .flatMap(type => validateWidget(type, WIDGET_TYPES[type].template).map(problem => type + ": " + problem)));
+check(!templateProblems.length, "шаблоны не проходят схему: " + templateProblems.join("; "));
+// И проверка не пустышка: кнопка без адреса и кнопка не у всех строк обязаны ловиться.
+const caught = await page.evaluate(() => validateWidget("list", { title: "x", rows: [{ title: "a", button: "b" }, { title: "c" }] }));
+check(caught.length >= 2, "проверка схемы не ловит нарушения: " + JSON.stringify(caught));
 check(outside.type === "list", "первый запуск открыл не List: " + outside.type);
 check((await code(page)).includes("Рестораны"), "при первом запуске нет шаблона списка");
 const iconFont = await page.evaluate(async () => {
