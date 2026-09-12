@@ -25,14 +25,18 @@
   </g>
 
   <g fill="#fff" font-family="Roboto, 'Segoe UI', Arial, sans-serif">
-    <text x="64" y="300" font-size="50" font-weight="700">
+    <text x="64" y="270" font-size="50" font-weight="700">
       <tspan x="64">Редактор виджета</tspan>
       <tspan x="64" dy="60">ВК сообщества</tspan>
     </text>
-    <text x="64" y="440" font-size="24" opacity=".88">
+    <text x="64" y="410" font-size="24" opacity=".88">
       <tspan x="64">Код на VKScript или форма без кода:</tspan>
       <tspan x="64" dy="34">виджет сообщества с предпросмотром</tspan>
       <tspan x="64" dy="34">прямо во ВКонтакте.</tspan>
+    </text>
+    <!-- Кто сделал: проект, а не человек. Внизу слева, на уровне низа кадра справа. -->
+    <text x="64" y="534" font-size="20">
+      <tspan opacity=".72">Сделано в </tspan><tspan font-weight="700">sawking.tech</tspan>
     </text>
   </g>
 

@@ -93,4 +93,4 @@ node tools/smoke.mjs
 
 ## Лицензия
 
-MIT, см. [LICENSE](LICENSE). Автор — [Володя Савкин](https://vk.com/super.volodya).
+MIT, см. [LICENSE](LICENSE). Сделано в [SawKing Tech](https://sawking.tech).
