@@ -28,7 +28,9 @@ const LIST_ROW = objField({
   title_url: urlField(),
   button: strField(50, { sameInAll: true }),
   button_url: urlField({ requiredWith: "button" }),
-  icon_id: strField(undefined, { sameInAll: true }),
+  // communityIcon: в форме только аватар сообщества. Сюда ставили id посетителя — он видел
+  // свою аватарку и пугался, будто сам оставил сообщение; такие виджеты быстро надоели.
+  icon_id: strField(undefined, { sameInAll: true, communityIcon: true }),
   descr: strField(100, { oneLine: true }),
   address: strField(100),
   time: strField(100),
@@ -97,7 +99,7 @@ const WIDGET_TYPES = {
     fields: {
       ...HEADER_FOOTER,
       head: arrField(objField({ text: strField(50), align: enumField(["left", "center", "right"]) }), 1, 6),
-      body: arrField(arrField(objField({ text: strField(100), url: urlField(), icon_id: strField() }), 1, 6), 1, 11),
+      body: arrField(arrField(objField({ text: strField(100), url: urlField(), icon_id: strField(undefined, { communityIcon: true }) }), 1, 6), 1, 11),
     },
     rules: [
       widget => (widget.head ? 1 : 0) + (widget.body?.length ?? 0) > 11

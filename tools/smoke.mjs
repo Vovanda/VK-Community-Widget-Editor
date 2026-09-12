@@ -309,6 +309,20 @@ await setCode(page, "");
 await page.click("#templateBtn");
 await page.selectOption('#formView .form-add-field[data-path="rows.0"]', "icon_id");
 check((await code(page)).includes('"icon_id": "club777"'), "новый icon_id не club777 при group_id=777");
+// Id иконки строки не вводят: аватар посетителя в виджете пугает («я не оставлял сообщение»).
+const iconCell = await page.evaluate(() => ({
+  inputs: document.querySelectorAll('#formView input[data-path="rows.0.icon_id"]').length,
+  shown: document.querySelector('#formView .form-icon-value[data-path="rows.0.icon_id"]')?.textContent,
+}));
+check(iconCell.inputs === 0 && iconCell.shown === "Аватар сообщества",
+  "у иконки строки есть поле ввода или нет подписи «Аватар сообщества»: " + JSON.stringify(iconCell));
+// Без id сообщества подставить нечего — пункт выключен.
+const iconOption = await page.evaluate(() => {
+  const box = document.createElement("div");
+  renderForm(box, "list", templateToCode("list"), () => {}, {});
+  return box.querySelector('.form-add-field[data-path="rows.0"] option[value="icon_id"]')?.disabled;
+});
+check(iconOption === true, "без id сообщества «Иконка сообщества» можно добавить: " + iconOption);
 await page.click("#codeTab");
 
 /* ==== ФОРМАТИРОВАНИЕ ==== */

@@ -243,6 +243,12 @@ function renderEntry(obj, key, field, path, ctx) {
   if (field.kind === "array") return renderArray(obj[key], field, fieldLabel(key), path, ctx, remove);
   const cell = el("div", "form-field span-" + fieldSpan(key, field));
   const head = el("div", "form-field-head");
+  if (field.communityIcon) {
+    head.append(el("span", "form-label", "Иконка"));
+    if (remove) head.append(remove);
+    cell.append(head, renderCommunityIcon(obj[key], path, ctx));
+    return cell;
+  }
   const label = el("label", "form-label", fieldLabel(key));
   label.htmlFor = fieldId(path);
   head.append(label);
@@ -251,12 +257,29 @@ function renderEntry(obj, key, field, path, ctx) {
   return cell;
 }
 
+// Иконку строки id не выбирают: форма ставит аватар сообщества (club<id>) и даёт только
+// убрать поле. Чужое значение из кода показывается как есть — править его можно в коде.
+function renderCommunityIcon(value, path, ctx) {
+  const own = value && value === ctx.defaults.icon_id;
+  const shown = el("output", "form-icon-value", own ? "Аватар сообщества" : value ? `${value} (из кода)` : "Нет id сообщества");
+  shown.dataset.path = path;
+  return shown;
+}
+
+// Пункт «Иконка сообщества» без id сообщества выключен: подставить нечего.
+function addFieldOption(key, field, ctx) {
+  if (!field.communityIcon) return new Option(fieldLabel(key), key);
+  const option = new Option(ctx.defaults.icon_id ? "Иконка сообщества" : "Иконка сообщества: откройте из сообщества", key);
+  option.disabled = !ctx.defaults.icon_id;
+  return option;
+}
+
 function renderAddField(obj, fields, missing, path, ctx) {
   const select = el("select", "form-add-field");
   select.setAttribute("aria-label", "Добавить поле");
   select.dataset.path = path;
   select.add(new Option(path === "" ? "Добавить поле виджета…" : "Добавить поле…", ""));
-  for (const key of missing) select.add(new Option(fieldLabel(key), key));
+  for (const key of missing) select.add(addFieldOption(key, fields[key], ctx));
   select.addEventListener("change", () => {
     if (!select.value) return;
     obj[select.value] = emptyValue(fields[select.value], undefined, select.value, ctx.defaults);

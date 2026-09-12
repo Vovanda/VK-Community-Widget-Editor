@@ -457,6 +457,15 @@ a:focus-visible {
   resize: vertical;
 }
 
+/* Иконка сообщества — значение без ввода: та же высота, что у поля, но без рамки ввода. */
+.form-icon-value {
+  padding: 5px 8px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
 .form-add-field {
   justify-self: start;
 }
