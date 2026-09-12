@@ -5,6 +5,7 @@
 
 - Открыть приложение: [vk.ru/app7100465](https://vk.ru/app7100465).
 - Настройки приложения, для владельца: [vk.ru/editapp?id=7100465](https://vk.ru/editapp?id=7100465).
+- Состояние приложения в VK, картинки для настроек и путь в каталог: [docs/vk-app.md](docs/vk-app.md).
 
 Сама страница лежит на [GitHub Pages](https://vovanda.github.io/VK-Community-Widget-Editor/),
 но вне VK предпросмотр и права не работают: они вызываются через VK.
