@@ -5,8 +5,8 @@ const VK_API_VERSION = "5.131";
 const WIDGET_PERMISSION = 64;
 
 const STORAGE_KEY = "vk_widget_editor_v2";
-// Прежний формат хранил копию кода на каждое нажатие клавиши и рос без предела.
-// Читаем его один раз ради последней версии кода и удаляем.
+// Прежний формат хранил копию кода на каждое нажатие клавиши. Берём из него последнюю
+// версию, а сам ключ не трогаем: там вся история, ранние скрипты могут жить только в ней.
 const LEGACY_STORAGE_KEY = "vk_widget_editor_state";
 
 // preserve-inline оставляет однострочные объекты в строку: иначе список сообщений
@@ -17,15 +17,15 @@ const LOG_PREVIEW_LENGTH = 80;
 /* ==== ШАБЛОНЫ ==== */
 // Тип виджета -> подпись и пример кода. Список типов на странице строится отсюда.
 const WIDGET_TYPES = {
-  text: { label: "Текст", template: { title: "Цитата дня", text: "«Нам нужно гордиться»" } },
-  list: { label: "Список", template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", button_url: "#", descr: "Вид на стрелку" }] } },
-  table: { label: "Таблица", template: { title: "Таблица", head: [{ text: "Колонка 1" }], body: [[{ text: "Ячейка" }]] } },
-  tiles: { label: "Плитки", template: { title: "Фильмы", tiles: [{ title: "Доктор Стрэндж", descr: "Фэнтези", url: "#", link: "Купить", link_url: "#" }] } },
-  compact_list: { label: "Компактный список", template: { title: "Компактный список", rows: [{ title: "Элемент", button: "Подробнее", button_url: "#", descr: "Описание" }] } },
-  cover_list: { label: "Список с обложками", template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", cover_id: "12345_6789", url: "#", button_url: "#", descr: "Описание" }] } },
-  match: { label: "Матч", template: { title: "Матч", match: { state: "Идёт первый тайм", team_a: { name: "Зенит" }, team_b: { name: "Спартак" }, score: { team_a: 2, team_b: 0 } } } },
-  matches: { label: "Матчи", template: { title: "Список матчей", matches: [{ team_a: { name: "Зенит" }, team_b: { name: "Спартак" }, score: { team_a: 2, team_b: 0 }, icon_id: "123_456" }] } },
-  donation: { label: "Сбор денег", template: { title: "Поддержать", text: "На помощь животным", button_url: "#", goal: 80000, funded: 7000, backers: 20, currency: "RUB", date: { start: 1700000000, end: 1701000000 } } },
+  text: { label: "Text", template: { title: "Цитата дня", text: "«Нам нужно гордиться»" } },
+  list: { label: "List", template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", button_url: "#", descr: "Вид на стрелку" }] } },
+  table: { label: "Table", template: { title: "Таблица", head: [{ text: "Колонка 1" }], body: [[{ text: "Ячейка" }]] } },
+  tiles: { label: "Tiles", template: { title: "Фильмы", tiles: [{ title: "Доктор Стрэндж", descr: "Фэнтези", url: "#", link: "Купить", link_url: "#" }] } },
+  compact_list: { label: "Compact list", template: { title: "Компактный список", rows: [{ title: "Элемент", button: "Подробнее", button_url: "#", descr: "Описание" }] } },
+  cover_list: { label: "Cover list", template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", cover_id: "12345_6789", url: "#", button_url: "#", descr: "Описание" }] } },
+  match: { label: "Match", template: { title: "Матч", match: { state: "Идёт первый тайм", team_a: { name: "Зенит" }, team_b: { name: "Спартак" }, score: { team_a: 2, team_b: 0 } } } },
+  matches: { label: "Matches", template: { title: "Список матчей", matches: [{ team_a: { name: "Зенит" }, team_b: { name: "Спартак" }, score: { team_a: 2, team_b: 0 }, icon_id: "123_456" }] } },
+  donation: { label: "Donation", template: { title: "Поддержать", text: "На помощь животным", button_url: "#", goal: 80000, funded: 7000, backers: 20, currency: "RUB", date: { start: 1700000000, end: 1701000000 } } },
 };
 
 const RANDOM_SNIPPET = `// Случайные числа в VKScript: Math.random здесь нет, поэтому берём случайных друзей
@@ -219,7 +219,7 @@ function connectVk() {
 /* ==== ЗАПУСК ==== */
 function fillTypeSelect() {
   for (const [type, { label }] of Object.entries(WIDGET_TYPES)) {
-    typeSelect.add(new Option(`${label} (${type})`, type));
+    typeSelect.add(new Option(label, type));
   }
   typeSelect.value = state.widgetType;
 }

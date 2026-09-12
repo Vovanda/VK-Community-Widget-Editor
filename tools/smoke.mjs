@@ -19,7 +19,9 @@ import { chromium } from "playwright";
 
 const URL = process.env.SMOKE_URL || "http://localhost:8743/index.htm";
 const SHOTS = process.env.SMOKE_SHOTS;   // папка для скриншотов по ширинам, по желанию
-const WIDTHS = [390, 768, 1200];
+// 650 — ширина колонки, в которой VK показывает приложение на компьютере.
+const VK_FRAME_WIDTH = 650;
+const WIDTHS = [390, VK_FRAME_WIDTH, 768, 1200];
 
 const problems = [];
 const check = (ok, what) => { if (!ok) problems.push(what); return ok; };
@@ -148,13 +150,27 @@ await page.evaluate(() => window.__vkCallbacks.onAppWidgetPreviewFail({ error_ms
 check(!(await page.evaluate(() => document.getElementById("log").hidden)), "ошибка VK не показана в журнале");
 
 /* ==== ШИРИНЫ ==== */
+const unlabeled = await page.evaluate(() => [...document.querySelectorAll(".toolbar button")]
+  .filter(button => !button.getAttribute("aria-label") || !button.title).map(button => button.id));
+check(!unlabeled.length, "кнопки панели без aria-label или title: " + unlabeled.join(", "));
+
+// Сколько рядов занимает панель: элементы с верхом ближе 8px считаются одним рядом,
+// иначе разная высота кнопки и списка дала бы лишний «ряд».
+const toolbarRows = () => page.evaluate(() => {
+  const tops = [...document.querySelectorAll(".toolbar button, .toolbar select")]
+    .map(el => el.getBoundingClientRect().top).sort((a, b) => a - b);
+  return tops.filter((top, i) => i === 0 || top - tops[i - 1] > 8).length;
+});
+
 for (const width of WIDTHS) {
   await page.setViewportSize({ width, height: 900 });
   await page.waitForTimeout(200);
   const overflow = await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  console.log("ширина " + width + ": вылет " + overflow + "px");
+  const rows = await toolbarRows();
+  console.log("ширина " + width + ": вылет " + overflow + "px, рядов панели " + rows);
   check(overflow <= 1, "на " + width + "px страница уезжает вбок на " + overflow + "px");
+  if (width >= VK_FRAME_WIDTH) check(rows === 1, "на " + width + "px панель в " + rows + " ряда");
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/width-${width}.png`, fullPage: true });
 }
 
@@ -171,7 +187,7 @@ const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgro
 console.log("тёмная тема:", darkBg);
 check(darkBg === "rgb(10, 10, 10)", "тёмная тема не покрасила фон: " + darkBg);
 if (SHOTS) {
-  for (const width of [390, 1200]) {
+  for (const width of [390, VK_FRAME_WIDTH, 1200]) {
     await page.setViewportSize({ width, height: 900 });
     await page.screenshot({ path: `${SHOTS}/dark-width-${width}.png`, fullPage: true });
   }

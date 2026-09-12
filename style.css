@@ -106,9 +106,13 @@ body {
 }
 
 /* ==== ПАНЕЛЬ ИНСТРУМЕНТОВ ==== */
+/* Три группы по раскладке владельца: история и тип, правка кода, действия VK.
+   Кнопки иконками: VK показывает приложение в колонке ~650px, и подписи
+   разрывали панель на несколько рядов. Смысл кнопки — в title и aria-label. */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
+  justify-content: space-between;
   gap: var(--gap) 16px;
   padding: 10px 12px;
   border: 1px solid var(--line);
@@ -120,11 +124,6 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-/* Действия VK прижаты вправо: они уходят наружу, в VK, а не правят код. */
-.tool-group-vk {
-  margin-left: auto;
 }
 
 .toolbar button,
@@ -299,9 +298,5 @@ a:focus-visible {
     margin: 0;
     padding: 12px;
     border-radius: 0;
-  }
-
-  .tool-group-vk {
-    margin-left: 0;
   }
 }
