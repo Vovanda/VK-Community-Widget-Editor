@@ -1,3 +1,5 @@
+var group_id = 139618442; // Укажите id вашей группы!
+
 var user = API.users.get({"user_ids":Args.uid,"fields":"timezone,last_seen"})[0];
 
 // === Случайность: время последнего визита посетителя ===
@@ -47,11 +49,6 @@ var info = [
     {"title":"Где почитать правила оформления?","text":"Читайте статью, чтобы узнать правила оформления объявлений.","button":"Посмотреть статью","button_url":"https://vk.ru/@veopuppy-posting-rules"},
     {"title":"Какие инструкции доступны?","text":"Подробная инструкция доступна в статье группы.","button":"Читать инструкцию","button_url":"https://vk.ru/@veopuppy-posting-rules"}
 ];
-
-// === Сообщество ===
-var group_info = API.groups.getById();
-if (group_info.groups) group_info = group_info.groups;
-var group_id = group_info[0].id;
 
 // === Проверка членства ===
 var is_member = API.groups.isMember({"group_id":group_id,"user_id":Args.uid});

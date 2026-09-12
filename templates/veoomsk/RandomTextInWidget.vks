@@ -1,3 +1,5 @@
+var group_id = 79230415; // Укажите id вашей группы!
+
 // === Случайность: случайные друзья донорского профиля ===
 var count_of_randoms = 2;
 var resp = API.friends.get({ user_id: 3972090, order: "random", count: count_of_randoms });
@@ -60,11 +62,6 @@ var info = [
     {"title":"Генетическая проверка","text":"Родители щенков проверены на ДМ (дегенеративную миелопатию) и дисплазию суставов."},
 	{"title":"Что нужно знать будущим владельцам ВЕО?","text":"Вся важная информация о выборе щенка, уходе и здоровье в нашей статье!","button":"Читать","button_url":"https://vk.cc/cPXU7i"}
 ];
-
-// === Сообщество ===
-var group_info = API.groups.getById();
-if (group_info.groups) group_info = group_info.groups;
-var group_id = group_info[0].id;
 
 // === Проверка членства ===
 var is_member = API.groups.isMember({"group_id":group_id,"user_id":Args.uid});
