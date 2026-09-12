@@ -39,19 +39,26 @@ const VERSION_DAYS = 7;
 const SNIPPETS = {
   random: {
     label: "Случайные числа",
-    code: `// Случайные числа в VKScript: Math.random здесь нет, поэтому берём случайных друзей
-// донорского профиля. Разбор подхода: https://gist.github.com/Vovanda/b47f75287542eb1f62704d5881b3d1d8
-var count_of_randoms = 1;
-var resp = API.friends.get({ user_id: 3972090, order: "random", count: count_of_randoms });
-var rnd_ids = resp.items;
-
+    // В time база берётся по модулю 100000: произведение на 9301 влезает в 32 бита VKScript.
+    code: `// Случайные числа rnd_values от 0 до 1. Источник — строкой ниже: "friends" — новые на каждом
+// показе (случайные друзья донорского профиля), "time" — держатся, пока у посетителя не обновится время визита.
+var rnd_source = "friends";
+var count_of_randoms = 2;
 var rnd_values = [];
 var i = 0;
-while (i < count_of_randoms) {
-    var id = parseInt(rnd_ids[i]) % 1000000;  // сводим к 32-бит числу
-    var h = (id * 1664525 + 1013904223) % 1000000;
-    rnd_values.push(h / 1000000);
-    i = i + 1;
+if (rnd_source == "friends") {
+    var rnd_ids = API.friends.get({ user_id: 3972090, order: "random", count: count_of_randoms }).items;
+    while (i < count_of_randoms) {
+        var id = parseInt(rnd_ids[i]) % 1000000;  // сводим к 32-бит числу
+        rnd_values.push(((id * 1664525 + 1013904223) % 1000000) / 1000000);
+        i = i + 1;
+    }
+} else {
+    var rnd_base = API.users.get({"user_ids": Args.uid, "fields": "last_seen"})[0].last_seen.time % 100000;
+    while (i < count_of_randoms) {
+        rnd_values.push((((rnd_base + i * 7919) * 9301 + 49297) % 233280) / 233280);
+        i = i + 1;
+    }
 }`,
   },
   greeting: {

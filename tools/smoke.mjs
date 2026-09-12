@@ -166,6 +166,18 @@ const snippetItems = await page.locator("#snippetsMenu [role=menuitem]").allText
 check(snippetItems.length === 2, "в меню сниппетов не 2 пункта: " + snippetItems.join(", "));
 await page.click('#snippetsMenu [data-snippet="random"]');
 check((await code(page)).startsWith("// Случайные числа"), "сниппет случайности не вставился в начало");
+// Один сниппет на оба источника: переключатель friends/time, код разбирается при любом значении.
+const randomSnippet = await page.evaluate(() => {
+  const source = SNIPPETS.random.code;
+  const parses = code => { try { acorn.parse(code, { ecmaVersion: 5, allowReturnOutsideFunction: true }); return true; } catch { return false; } };
+  return {
+    friends: parses(source), time: parses(source.replace('"friends";', '"time";')),
+    paths: source.includes("API.friends.get") && source.includes("last_seen.time"),
+    switch: /var rnd_source = "friends";/.test(source),
+  };
+});
+check(randomSnippet.friends && randomSnippet.time && randomSnippet.paths && randomSnippet.switch,
+  "сниппет случайности без переключателя, без одного из путей или не разбирается: " + JSON.stringify(randomSnippet));
 check(await page.isHidden("#snippetsMenu"), "меню не закрылось после выбора");
 await page.click("#undoBtn");
 await page.click("#snippetsBtn");
