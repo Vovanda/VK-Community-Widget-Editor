@@ -20,19 +20,19 @@
   <div class="workspace">
     <div class="toolbar" role="toolbar" aria-label="Код виджета">
       <div class="tool-group">
-        <button type="button" id="undoBtn" title="Отменить (Ctrl+Z)" aria-label="Отменить"><i class="fa fa-arrow-left" aria-hidden="true"></i></button>
-        <button type="button" id="redoBtn" title="Повторить (Ctrl+Y)" aria-label="Повторить"><i class="fa fa-arrow-right" aria-hidden="true"></i></button>
+        <button type="button" id="undoBtn" aria-keyshortcuts="Control+Z"><i class="fa fa-arrow-left" aria-hidden="true"></i><span class="btn-label">Отменить</span></button>
+        <button type="button" id="redoBtn" aria-keyshortcuts="Control+Y"><i class="fa fa-arrow-right" aria-hidden="true"></i><span class="btn-label">Повторить</span></button>
         <label class="visually-hidden" for="widgetType">Тип виджета</label>
-        <select id="widgetType" title="Тип виджета"></select>
+        <select id="widgetType"></select>
       </div>
       <div class="tool-group">
-        <button type="button" id="randomBtn" title="Вставить в начало генератор случайных чисел на VKScript" aria-label="Случайность"><i class="fa fa-dice" aria-hidden="true"></i></button>
-        <button type="button" id="templateBtn" title="Заменить код примером для выбранного типа" aria-label="Шаблон"><i class="fa fa-file-code" aria-hidden="true"></i></button>
-        <button type="button" id="formatBtn" title="Форматировать код" aria-label="Форматировать"><i class="fa fa-brush" aria-hidden="true"></i></button>
+        <button type="button" id="randomBtn"><i class="fa fa-dice" aria-hidden="true"></i><span class="btn-label">Случайность</span></button>
+        <button type="button" id="templateBtn"><i class="fa fa-file-code" aria-hidden="true"></i><span class="btn-label">Шаблон</span></button>
+        <button type="button" id="formatBtn"><i class="fa fa-brush" aria-hidden="true"></i><span class="btn-label">Форматировать</span></button>
       </div>
       <div class="tool-group">
-        <button type="button" id="permissionBtn" disabled title="Права на виджет: разрешить приложению обновлять виджет сообщества" aria-label="Права на виджет"><i class="fa fa-users-cog" aria-hidden="true"></i></button>
-        <button type="button" id="previewBtn" class="primary" disabled title="Предпросмотр (Ctrl+Enter)" aria-label="Предпросмотр"><i class="fa fa-eye" aria-hidden="true"></i></button>
+        <button type="button" id="permissionBtn" disabled><i class="fa fa-users-cog" aria-hidden="true"></i><span class="btn-label">Права на виджет</span></button>
+        <button type="button" id="previewBtn" class="primary" disabled aria-keyshortcuts="Control+Enter"><i class="fa fa-eye" aria-hidden="true"></i><span class="btn-label">Предпросмотр</span></button>
       </div>
     </div>
     <textarea id="editor" aria-label="Код виджета на VKScript"></textarea>

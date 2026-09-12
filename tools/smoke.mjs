@@ -172,9 +172,13 @@ const logRows = await page.evaluate(() => document.querySelectorAll("#logList li
 check(logRows === 10, "в журнале не 10 строк, а " + logRows);
 
 /* ==== ШИРИНЫ ==== */
+// Подпись живёт в самой кнопке: без неё пусто и при наведении, и для экранного диктора.
+// Всплывающих подсказок (title) владелец не хочет.
 const unlabeled = await page.evaluate(() => [...document.querySelectorAll(".toolbar button")]
-  .filter(button => !button.getAttribute("aria-label") || !button.title).map(button => button.id));
-check(!unlabeled.length, "кнопки панели без aria-label или title: " + unlabeled.join(", "));
+  .filter(button => !button.querySelector(".btn-label")?.textContent.trim()).map(button => button.id));
+check(!unlabeled.length, "кнопки панели без подписи: " + unlabeled.join(", "));
+const tooltips = await page.evaluate(() => document.querySelectorAll(".toolbar [title]").length);
+check(tooltips === 0, "на панели остались всплывающие подсказки title: " + tooltips);
 
 // Сколько рядов занимает панель: элементы с верхом ближе 8px считаются одним рядом,
 // иначе разная высота кнопки и списка дала бы лишний «ряд».
@@ -195,6 +199,25 @@ for (const width of WIDTHS) {
   if (width >= VK_FRAME_WIDTH) check(rows === 1, "на " + width + "px панель в " + rows + " ряда");
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/width-${width}.png`, fullPage: true });
 }
+
+// Наведение раскрывает подпись в кнопке; на ширине фрейма VK панель не должна уйти
+// во второй ряд даже от самой длинной подписи.
+await page.setViewportSize({ width: VK_FRAME_WIDTH, height: 900 });
+await page.hover("#permissionBtn");
+await page.waitForTimeout(300);
+const hoverRows = await toolbarRows();
+console.log("наведение на «Права на виджет» при " + VK_FRAME_WIDTH + ": рядов " + hoverRows);
+check(hoverRows === 1, "подпись при наведении уводит панель во второй ряд");
+if (SHOTS) await page.screenshot({ path: `${SHOTS}/hover-${VK_FRAME_WIDTH}.png` });
+await page.mouse.move(0, 0);
+await page.focus("#widgetType");
+await page.keyboard.press("Tab");
+await page.waitForTimeout(300);
+const focusedLabel = await page.evaluate(() => {
+  const label = document.activeElement.querySelector?.(".btn-label");
+  return label ? getComputedStyle(label).opacity : null;
+});
+check(focusedLabel === "1", "подпись не видна при фокусе с клавиатуры: " + focusedLabel);
 
 /* ==== ТЕМЫ ==== */
 // Тёмная тема берётся из настройки системы: фон обязан смениться целиком, иначе
