@@ -67,13 +67,16 @@ const LIST_RULES = [
 // Логотипы команд «указываются для каждой или не указываются для обеих».
 const bothTeamIcons = match => Boolean(match?.team_a?.icon_id) === Boolean(match?.team_b?.icon_id);
 
+// Адрес для примеров: VK не пускает в виджет ничего, кроме своих доменов, даже "#".
+const SAMPLE_URL = "https://vk.com";
+
 /* ==== ТИПЫ ==== */
 const WIDGET_TYPES = {
   list: {
     label: "List",
     fields: LIST_FIELDS,
     rules: LIST_RULES,
-    template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", button_url: "#", descr: "Вид на стрелку" }] },
+    template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", button_url: SAMPLE_URL, descr: "Вид на стрелку" }] },
   },
   table: {
     label: "Table",
@@ -96,9 +99,9 @@ const WIDGET_TYPES = {
     template: {
       title: "Фильмы",
       tiles: [
-        { title: "Доктор Стрэндж", descr: "Фэнтези", url: "#", link: "Купить", link_url: "#" },
-        { title: "Прибытие", descr: "Фантастика", url: "#", link: "Купить", link_url: "#" },
-        { title: "Интерстеллар", descr: "Фантастика", url: "#", link: "Купить", link_url: "#" },
+        { title: "Доктор Стрэндж", descr: "Фэнтези", url: SAMPLE_URL, link: "Купить", link_url: SAMPLE_URL },
+        { title: "Прибытие", descr: "Фантастика", url: SAMPLE_URL, link: "Купить", link_url: SAMPLE_URL },
+        { title: "Интерстеллар", descr: "Фантастика", url: SAMPLE_URL, link: "Купить", link_url: SAMPLE_URL },
       ],
     },
   },
@@ -107,12 +110,12 @@ const WIDGET_TYPES = {
     label: "Compact list",
     fields: LIST_FIELDS,
     rules: LIST_RULES,
-    template: { title: "Компактный список", rows: [{ title: "Элемент", button: "Подробнее", button_url: "#", descr: "Описание" }] },
+    template: { title: "Компактный список", rows: [{ title: "Элемент", button: "Подробнее", button_url: SAMPLE_URL, descr: "Описание" }] },
   },
   cover_list: {
     label: "Cover list",
     fields: { ...HEADER_FOOTER, rows: arrField(COVER_ROW, 1, 3) },
-    template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", cover_id: "12345_6789", url: "#", button_url: "#", descr: "Описание" }] },
+    template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", cover_id: "12345_6789", url: SAMPLE_URL, button_url: SAMPLE_URL, descr: "Описание" }] },
   },
   match: {
     label: "Match",
@@ -150,11 +153,22 @@ const WIDGET_TYPES = {
       backers: intField(0, 99999999),
       currency: enumField(["RUB", "USD", "UAH", "BYR", "EUR", "MDL", "AZN", "GEL", "AMD", "ILS", "GBP", "TMT", "BYN", "KZS", "KZT"]),
     },
-    template: { title: "Поддержать", text: "На помощь животным", button_url: "#", goal: 80000, funded: 7000, backers: 20, currency: "RUB", date: { start: 1700000000, end: 1701000000 } },
+    template: { title: "Поддержать", text: "На помощь животным", button_url: SAMPLE_URL, goal: 80000, funded: 7000, backers: 20, currency: "RUB", date: { start: 1700000000, end: 1701000000 } },
   },
 };
 
 /* ==== ПРОВЕРКА ==== */
+// Адреса VK пускает только на свои домены. Дока говорит расплывчато «внутренние ссылки»,
+// точный список дал ответ предпросмотра: «only vk.com, vk.ru, vkontakte.ru, vkvideo.ru,
+// assetcache.ru, vk.me, vk.cc, vk.link urls are allowed». Схема необязательна: в примерах
+// доки встречается vk.com/club1 без https.
+const VK_URL_HOSTS = ["vk.com", "vk.ru", "vkontakte.ru", "vkvideo.ru", "assetcache.ru", "vk.me", "vk.cc", "vk.link"];
+
+function isVkUrl(value) {
+  const host = value.replace(/^https?:\/\//i, "").split(/[/?#]/)[0].toLowerCase();
+  return VK_URL_HOSTS.some(allowed => host === allowed || host.endsWith("." + allowed));
+}
+
 // Список нарушений схемы; пустой список — виджет по доке корректен.
 function validateWidget(type, widget) {
   const spec = WIDGET_TYPES[type];
@@ -196,6 +210,7 @@ function checkValue(value, field, path, problems) {
       } else {
         if (field.max && value.length > field.max) problems.push(`${path}: длиннее ${field.max} символов`);
         if (field.oneLine && value.includes("\n")) problems.push(`${path}: без переносов строки`);
+        if (field.kind === "url" && !isVkUrl(value)) problems.push(`${path}: адрес только на домены VK: ${VK_URL_HOSTS.join(", ")}`);
       }
       break;
     case "integer":

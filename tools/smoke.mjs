@@ -89,6 +89,11 @@ check(!templateProblems.length, "шаблоны не проходят схему
 // И проверка не пустышка: кнопка без адреса и кнопка не у всех строк обязаны ловиться.
 const caught = await page.evaluate(() => validateWidget("list", { title: "x", rows: [{ title: "a", button: "b" }, { title: "c" }] }));
 check(caught.length >= 2, "проверка схемы не ловит нарушения: " + JSON.stringify(caught));
+// VK отклоняет адреса не на своих доменах, "#" в том числе — так упал предпросмотр Donation.
+const badUrl = await page.evaluate(() => validateWidget("donation", { title: "x", button_url: "#" }));
+check(badUrl.some(problem => problem.includes("домены VK")), "адрес # не пойман: " + JSON.stringify(badUrl));
+const goodUrl = await page.evaluate(() => validateWidget("donation", { title: "x", button_url: "vk.com/club1" }));
+check(!goodUrl.length, "адрес vk.com/club1 из примера доки забракован: " + JSON.stringify(goodUrl));
 check(outside.type === "list", "первый запуск открыл не List: " + outside.type);
 check((await code(page)).includes("Рестораны"), "при первом запуске нет шаблона списка");
 const iconFont = await page.evaluate(async () => {
