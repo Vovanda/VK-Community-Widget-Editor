@@ -316,6 +316,12 @@ if (SHOTS) {
 }
 await page.setViewportSize({ width: 1200, height: 900 });
 
+// Без id сообщества подставлять нечего: var group_id в коде остаётся как был.
+const GROUP_ID_CODE = 'var group_id = 5; // Укажите id вашей группы!\nreturn {"title": "x"};';
+await setCode(page, GROUP_ID_CODE);
+await page.waitForTimeout(200);
+check((await code(page)).startsWith("var group_id = 5;"), "без id сообщества редактор поменял id группы в коде");
+
 // Иконка новой строки — фото текущего сообщества, а не пользователя.
 await page.goto(URL + "?group_id=777", { waitUntil: "load" });
 await page.waitForSelector(".CodeMirror", { state: "attached" });
@@ -340,6 +346,17 @@ const iconOption = await page.evaluate(() => {
 });
 check(iconOption === true, "без id сообщества «Иконка сообщества» можно добавить: " + iconOption);
 await page.click("#codeTab");
+// Код виджета своё сообщество не знает — редактор сам ставит его id в var group_id и пишет об этом.
+await setCode(page, GROUP_ID_CODE);
+await page.waitForFunction(() => document.querySelector(".CodeMirror").CodeMirror.getValue().startsWith("var group_id = 777;"),
+  null, { timeout: 3000 }).catch(() => {});
+const firstLine = async () => (await code(page)).split("\n")[0];
+check((await code(page)).startsWith("var group_id = 777;"), "id группы не заменён на текущее сообщество: " + await firstLine());
+check((await page.textContent("#logList")).includes("заменён на 777"), "замена id группы не записана в журнал");
+// «Отменить» возвращает прежний id, и редактор его тут же не перебивает.
+await page.click("#undoBtn");
+await page.waitForTimeout(200);
+check((await code(page)).startsWith("var group_id = 5;"), "«Отменить» не вернула прежний id или его перебило: " + await firstLine());
 
 /* ==== ФОРМАТИРОВАНИЕ ==== */
 await setCode(page, 'var ids=API.friends.get({"user_id":1}).items@.id;\nreturn {"title":"x","rows":[ids]};');

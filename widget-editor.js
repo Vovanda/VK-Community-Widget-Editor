@@ -214,7 +214,20 @@ function updateTemplateButton() {
   templateBtn.disabled = editor.getValue().trim() !== "";
 }
 
-function onCodeChanged() {
+// Код виджета своё сообщество не знает: в Args VK его не передаёт. Редактор знает — id
+// приходит в адресе фрейма, — и держит строку var group_id равной текущему сообществу.
+// Замена — обычная правка: её видно в коде, в журнале и её отменяет «Отменить».
+function syncGroupId() {
+  if (!GROUP_ID) return;
+  const found = literalDeclarations(editor.getValue())?.find(declaration => declaration.name === "group_id");
+  if (!found || !/^\d+$/.test(String(found.value)) || String(found.value) === GROUP_ID) return;
+  const doc = editor.getDoc();
+  const literal = typeof found.value === "string" ? JSON.stringify(GROUP_ID) : GROUP_ID;
+  doc.replaceRange(literal, doc.posFromIndex(found.start), doc.posFromIndex(found.end), "group-id");
+  logMessage(`Id группы в коде заменён на ${GROUP_ID} (было ${found.value}): редактор открыт из этого сообщества.`);
+}
+
+function onCodeChanged(cm, changes) {
   const type = state.widgetType;
   const code = editor.getValue();
   // Версия запоминает код до этой правки: он и есть «каким код был к этому часу».
@@ -226,6 +239,9 @@ function onCodeChanged() {
   updateTemplateButton();
   // Код поменялся не из формы — отмена, шаблон, правка во вкладке «Код»: форма вычитывает его заново.
   if (state.view === "form" && !formWriting) refreshForm();
+  // После «Отменить» id не подставляется снова, иначе отменить замену было бы нельзя.
+  // Менять документ внутри обработчика changes CodeMirror не любит — замена следом.
+  if (!changes?.some(change => change.origin === "undo" || change.origin === "redo")) queueMicrotask(syncGroupId);
 }
 
 function switchType(type) {
@@ -235,6 +251,7 @@ function switchType(type) {
   updateHistoryButtons();
   updateTemplateButton();
   if (state.view === "form") refreshForm();
+  syncGroupId();
 }
 
 function createEditor() {
@@ -521,6 +538,7 @@ function bindControls() {
 
 fillTypeSelect();
 createEditor();
+syncGroupId();
 bindControls();
 showView(state.view);
 updateHistoryButtons();
