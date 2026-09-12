@@ -73,6 +73,21 @@ await shoot("screen-form.png");
 
 await page.click("#codeTab");
 await shoot("screen-code.png");
+
+// Форма без кода — для баннера: простой List из трёх строк, первая раскрыта с полями,
+// остальные свёрнуты. Никакого скрипта в кадре: виджет заполняется полями.
+const SAMPLE_LIST = `return {
+  "title": "Рестораны",
+  "rows": [
+    {"title": "Корюшка", "button": "Забронировать", "button_url": "https://vk.com", "descr": "Вид на стрелку"},
+    {"title": "Кофейня у парка", "button": "Меню", "button_url": "https://vk.com", "descr": "Завтраки весь день"},
+    {"title": "Пекарня на углу", "button": "Заказать", "button_url": "https://vk.com", "descr": "Хлеб из печи к восьми утра"}
+  ]
+};`;
+await page.evaluate(code => document.querySelector(".CodeMirror").CodeMirror.setValue(code), SAMPLE_LIST);
+await page.click("#formTab");
+await page.evaluate(() => document.querySelectorAll("details.form-card").forEach((card, i) => { card.open = i === 0; }));
+await shoot("screen-nocode.png");
 await context.close();
 
 // Баннер «Выбора редакции» вставляет screen-form.png относительной ссылкой, поэтому

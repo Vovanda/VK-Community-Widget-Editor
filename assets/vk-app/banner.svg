@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1120 630" width="1120" height="630">
   <!-- Баннер 1120×630 для блока «Выбор редакции»: слева мотив иконки и что это,
-       справа сама форма (screen-form.png, обрезана под вкладками — заголовок уже слева). -->
+       справа форма простого List без кода (screen-nocode.png, обрезана под вкладками). -->
   <defs>
     <clipPath id="shot"><rect x="600" y="72" width="456" height="462" rx="4"/></clipPath>
     <filter id="lift" x="-10%" y="-10%" width="120%" height="120%">
@@ -26,13 +26,13 @@
 
   <g fill="#fff" font-family="Roboto, 'Segoe UI', Arial, sans-serif">
     <text x="64" y="270" font-size="50" font-weight="700">
-      <tspan x="64">Редактор виджета</tspan>
-      <tspan x="64" dy="60">ВК сообщества</tspan>
+      <tspan x="64">Виджет сообщества</tspan>
+      <tspan x="64" dy="60">без кода</tspan>
     </text>
     <text x="64" y="410" font-size="24" opacity=".88">
-      <tspan x="64">Все основные типы виджетов сообщества</tspan>
-      <tspan x="64" dy="34">в одном редакторе. Визуальный</tspan>
-      <tspan x="64" dy="34">конструктор помогает их наполнить.</tspan>
+      <tspan x="64">Заполните поля в форме, редактор</tspan>
+      <tspan x="64" dy="34">сам соберёт код. Все основные типы</tspan>
+      <tspan x="64" dy="34">виджетов ВКонтакте.</tspan>
     </text>
     <!-- Кто сделал: проект, а не человек. Внизу слева, на уровне низа кадра справа. -->
     <text x="64" y="534" font-size="20">
@@ -43,6 +43,6 @@
   <rect x="600" y="72" width="456" height="462" rx="4" fill="#fff" filter="url(#lift)"/>
   <g clip-path="url(#shot)">
     <!-- Кадр 1300×1544: с 110 px (вкладки) до низа формы (~1430 px), в масштабе 456/1300. -->
-    <image href="screen-form.png" xlink:href="screen-form.png" x="600" y="33.4" width="456" height="541.6"/>
+    <image href="screen-nocode.png" xlink:href="screen-nocode.png" x="600" y="33.4" width="456" height="541.6"/>
   </g>
 </svg>
