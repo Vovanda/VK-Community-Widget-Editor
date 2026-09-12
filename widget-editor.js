@@ -18,7 +18,6 @@ const LOG_LIMIT = 10;
 /* ==== ШАБЛОНЫ ==== */
 // Тип виджета -> подпись и пример кода. Список типов на странице строится отсюда.
 const WIDGET_TYPES = {
-  text: { label: "Text", template: { title: "Цитата дня", text: "«Нам нужно гордиться»" } },
   list: { label: "List", template: { title: "Рестораны", rows: [{ title: "Корюшка", button: "Забронировать", button_url: "#", descr: "Вид на стрелку" }] } },
   table: { label: "Table", template: { title: "Таблица", head: [{ text: "Колонка 1" }], body: [[{ text: "Ячейка" }]] } },
   tiles: { label: "Tiles", template: { title: "Фильмы", tiles: [{ title: "Доктор Стрэндж", descr: "Фэнтези", url: "#", link: "Купить", link_url: "#" }] } },

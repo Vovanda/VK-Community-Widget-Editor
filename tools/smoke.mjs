@@ -77,7 +77,10 @@ console.log("вне VK:", JSON.stringify(outside));
 check(/вне VK/.test(outside.status), "статус не говорит, что страница открыта вне VK: " + outside.status);
 check(outside.preview && outside.permission, "кнопки VK включены вне VK");
 check(outside.logHidden, "журнал сообщений виден, хотя сообщений нет");
-check(outside.types === 9, "типов виджета не 9: " + outside.types);
+check(outside.types === 8, "типов виджета не 8: " + outside.types);
+const typeValues = await page.evaluate(() => [...document.getElementById("widgetType").options].map(o => o.value));
+check(typeValues[0] === "list", "первым в списке не List: " + typeValues[0]);
+check(!typeValues.includes("text"), "в списке остался Text");
 check(outside.type === "list", "первый запуск открыл не List: " + outside.type);
 check((await code(page)).includes("Рестораны"), "при первом запуске нет шаблона списка");
 const iconFont = await page.evaluate(async () => {
@@ -88,8 +91,8 @@ check(iconFont, "шрифт иконок не загрузился: вместо
 
 /* ==== ТИПЫ И ОТМЕНА ==== */
 await setCode(page, 'return {"title":"мой список","rows":[]};');
-await page.selectOption("#widgetType", "text");
-check((await code(page)).includes("Цитата дня"), "у текста не подставился шаблон");
+await page.selectOption("#widgetType", "table");
+check((await code(page)).includes('"head"'), "у таблицы не подставился шаблон");
 check(await page.isDisabled("#undoBtn"), "«Отменить» в свежем типе активна: история чужого типа");
 await page.selectOption("#widgetType", "list");
 check((await code(page)).includes("мой список"), "код списка потерялся при переключении типа");
