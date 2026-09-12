@@ -212,6 +212,16 @@ const engAfterMove = await blockTitles(await code(page), "engagement");
 check(engAfterMove[0] === engBeforeMove[1] && engAfterMove[1] === engBeforeMove[0],
   "↓ не поменял элементы местами: " + engAfterMove.slice(0, 2).join(" | "));
 
+// Удаление в два нажатия: первое только спрашивает, второе удаляет.
+const salesCount = async () => (await blockTitles(await code(page), "sales")).length;
+const salesBeforeDelete = await salesCount();
+const deleteFirstSales = '#formView .form-block[data-name="sales"] .form-card .form-delete';
+await page.click(deleteFirstSales);
+check(await salesCount() === salesBeforeDelete, "удаление сработало с первого нажатия");
+check(await page.isVisible(`${deleteFirstSales}.armed`), "после первого нажатия нет вопроса «Удалить?»");
+await page.click(deleteFirstSales);
+check(await salesCount() === salesBeforeDelete - 1, "второе нажатие не удалило элемент");
+
 await page.click("#formView .form-collapse-all");
 check(await page.evaluate(() => [...document.querySelectorAll("#formView details")].every(d => !d.open)),
   "«Свернуть все» свернула не всё");

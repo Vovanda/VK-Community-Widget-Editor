@@ -290,21 +290,47 @@ function moveItem(items, from, to, ctx) {
   ctx.restructure();
 }
 
+// Удаление элемента — в два нажатия: крестик становится «Удалить?», второе нажатие
+// удаляет, без него через несколько секунд всё возвращается. Системный confirm во
+// фрейме VK браузер может заблокировать, поэтому подтверждение своё.
+const DELETE_CONFIRM_MS = 3000;
+
+function deleteButton(label, onDelete) {
+  let timer;
+  const disarm = () => {
+    button.classList.remove("armed");
+    button.querySelector(".form-delete-ask")?.remove();
+  };
+  const button = iconButton("fa-xmark", label, "form-delete", () => {
+    if (button.classList.contains("armed")) {
+      clearTimeout(timer);
+      onDelete();
+      return;
+    }
+    button.classList.add("armed");
+    button.append(el("span", "form-delete-ask", "Удалить?"));
+    timer = setTimeout(disarm, DELETE_CONFIRM_MS);
+  });
+  return button;
+}
+
+// Стрелки стоят слева, у заголовка, а удаление — одно справа: рядом с крестиком
+// промахнуться со «сдвинуть» на «удалить» было слишком легко.
 function renderCard(items, index, field, label, path, ctx) {
   const item = items[index];
   const card = el("details", "form-card");
   card.open = ctx.isOpen(item, items.length);
   card.addEventListener("toggle", () => ctx.setOpen(item, card.open));
   const summary = el("summary", "form-card-head");
-  const actions = el("span", "form-card-actions");
-  actions.append(
+  const moves = el("span", "form-card-moves");
+  moves.append(
     iconButton("fa-arrow-up", `Поднять: ${label}, ${index + 1}`, "form-move form-move-up",
       () => moveItem(items, index, index - 1, ctx), index === 0),
     iconButton("fa-arrow-down", `Опустить: ${label}, ${index + 1}`, "form-move form-move-down",
       () => moveItem(items, index, index + 1, ctx), index === items.length - 1),
-    removeButton(`Удалить: ${label}, ${index + 1}`, () => { items.splice(index, 1); ctx.restructure(); }),
   );
-  summary.append(el("span", "form-card-title", cardTitle(item, index)), actions);
+  summary.append(moves, el("span", "form-card-title", cardTitle(item, index)),
+    deleteButton(`Удалить: ${label}, ${index + 1}`, () => { items.splice(index, 1); ctx.restructure(); }));
   card.append(summary, renderItem(items, index, field.of, joinPath(path, index), ctx));
   return card;
 }

@@ -13,6 +13,8 @@
   --primary-bg: #2688eb;        /* главная кнопка */
   --primary-text: #ffffff;
   --warning-bg: #fff2d6;        /* журнал сообщений и нарушения схемы */
+  --danger: #e64646;            /* удаление: color_background_negative VKUI */
+  --on-danger: #ffffff;
 
   /* Подсветка кода — One Light: стандартные цвета CodeMirror на тёмном фоне не читаются. */
   --code-keyword: #a626a4;
@@ -46,6 +48,8 @@
     --primary-bg: #ffffff;
     --primary-text: #000000;
     --warning-bg: #473315;
+    --danger: #ff5c5c;
+    --on-danger: #ffffff;
 
     /* One Dark */
     --code-keyword: #c678dd;
@@ -471,7 +475,7 @@ a:focus-visible {
   white-space: nowrap;
 }
 
-.form-card-actions {
+.form-card-moves {
   display: flex;
   gap: 2px;
 }
@@ -503,6 +507,27 @@ a:focus-visible {
   cursor: default;
 }
 
+/* Удаление элемента красное и в два нажатия: после первого крестик становится «Удалить?». */
+.form-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--danger);
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.form-delete:hover,
+.form-delete.armed {
+  color: var(--on-danger);
+  background: var(--danger);
+}
+
 .form-problems {
   display: grid;
   gap: 2px;
@@ -525,19 +550,13 @@ a:focus-visible {
   color: var(--text-muted);
 }
 
-/* Блок данных скрипта — своя область, сворачивается по заголовку. */
-.form-block {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-}
-
+/* Блок данных скрипта — своя область, сворачивается по заголовку. Рамки и боковых
+   отступов у области нет: с рамкой формы и карточек выходило три вертикальные
+   линии подряд. Области разделяет черта под заголовком. */
 .form-block-head {
-  padding: 8px 10px;
+  padding: 8px 0;
   font-size: 0.9375rem;
   font-weight: 600;
-}
-
-.form-block[open] > .form-block-head {
   border-bottom: 1px solid var(--line);
 }
 
@@ -552,7 +571,7 @@ a:focus-visible {
 .form-block-body {
   display: grid;
   gap: var(--gap);
-  padding: 10px;
+  padding: 8px 0 4px;
 }
 
 /* ==== ЖУРНАЛ ==== */
