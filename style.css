@@ -196,13 +196,13 @@ body {
   cursor: not-allowed;
 }
 
-/* Меню сниппетов выпадает под своей кнопкой поверх редактора; z-index выше слоёв
+/* Выпадающие меню (сниппеты, версии) — под своей кнопкой поверх редактора; z-index выше слоёв
    CodeMirror (у него до 6), без гонки «кто больше». */
-.snippets {
+.dropdown {
   position: relative;
 }
 
-.snippets-menu {
+.dropdown-menu {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -217,11 +217,11 @@ body {
   border-radius: var(--radius);
 }
 
-.snippets-menu[hidden] {
+.dropdown-menu[hidden] {
   display: none;
 }
 
-.toolbar .snippets-menu button {
+.toolbar .dropdown-menu button {
   width: 100%;
   justify-content: flex-start;
   font-weight: 400;
@@ -794,7 +794,7 @@ a:focus-visible {
     grid-column: 1 / -1;
   }
 
-  .snippets > button {
+  .dropdown > button {
     width: 100%;
   }
 }

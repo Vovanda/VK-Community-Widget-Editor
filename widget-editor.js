@@ -18,6 +18,8 @@ const STORAGE_KEY = GROUP_ID ? `${SHARED_STORAGE_KEY}:group:${GROUP_ID}` : SHARE
 // Прежний формат хранил копию кода на каждое нажатие клавиши. Берём из него последнюю
 // версию, а сам ключ не трогаем: там вся история, ранние скрипты могут жить только в ней.
 const LEGACY_STORAGE_KEY = "vk_widget_editor_state";
+// Версии пишутся отдельным ключом: раз в час, а не вместе с кодом на каждую букву.
+const VERSIONS_KEY = STORAGE_KEY + ":versions";
 
 // preserve-inline оставляет однострочные объекты в строку: иначе список сообщений
 // из шаблона veoomsk разъезжается с 112 строк до 250.
@@ -26,6 +28,10 @@ const LOG_PREVIEW_LENGTH = 80;
 const LOG_LIMIT = 10;
 // Глубина истории отмены, которая хранится в localStorage вместе с кодом.
 const HISTORY_DEPTH = 200;
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+// Сколько дней назад держать версии: дальше суток — по одной на день.
+const VERSION_DAYS = 7;
 
 /* ==== СНИППЕТЫ ==== */
 // Типы виджетов, их схемы и шаблоны живут в widget-types.js, форма — в widget-form.js.
@@ -75,6 +81,8 @@ const redoBtn = byId("redoBtn");
 const templateBtn = byId("templateBtn");
 const snippetsBtn = byId("snippetsBtn");
 const snippetsMenu = byId("snippetsMenu");
+const versionsBtn = byId("versionsBtn");
+const versionsMenu = byId("versionsMenu");
 const formatBtn = byId("formatBtn");
 const permissionBtn = byId("permissionBtn");
 const previewBtn = byId("previewBtn");
@@ -126,6 +134,40 @@ function loadState() {
 const state = loadState();
 const saveState = () => writeStorage(STORAGE_KEY, state);
 
+/* ==== ВЕРСИИ ==== */
+// Версия — код, каким он был перед первой правкой в новом часу: в меню видно, каким
+// код был час назад или вчера. За последние сутки хранятся все версии (их не больше
+// одной на час), старше — последняя за каждый день, не дальше недели.
+const versions = readStorage(VERSIONS_KEY) ?? {};
+
+const hourOf = time => Math.floor(time / HOUR);
+const dayOf = time => new Date(time).toDateString();
+
+function pruneVersions(list, now) {
+  const recent = list.filter(version => now - version.at < DAY);
+  const older = list.filter(version => now - version.at >= DAY && now - version.at < VERSION_DAYS * DAY);
+  // Список по возрастанию времени: в Map по дню остаётся последняя версия дня.
+  const lastOfDay = new Map(older.map(version => [dayOf(version.at), version]));
+  return [...lastOfDay.values(), ...recent];
+}
+
+function rememberVersion(type, code) {
+  const now = Date.now();
+  const list = versions[type] ?? [];
+  const last = list[list.length - 1];
+  if (last && (hourOf(last.at) === hourOf(now) || last.code === code)) return;
+  versions[type] = pruneVersions([...list, { at: now, code }], now);
+  writeStorage(VERSIONS_KEY, versions);
+}
+
+function versionLabel(at) {
+  const date = new Date(at);
+  const time = date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  if (dayOf(at) === dayOf(Date.now())) return `Сегодня ${time}`;
+  if (dayOf(at) === dayOf(Date.now() - DAY)) return `Вчера ${time}`;
+  return `${date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })} ${time}`;
+}
+
 /* ==== РЕДАКТОР ==== */
 let editor;
 // У каждого типа свой документ CodeMirror: переключение типа не смешивает
@@ -166,9 +208,12 @@ function updateTemplateButton() {
 }
 
 function onCodeChanged() {
+  const type = state.widgetType;
   const code = editor.getValue();
-  state.code[state.widgetType] = code;
-  (state.history ??= {})[state.widgetType] = { length: code.length, data: editor.getDoc().getHistory() };
+  // Версия запоминает код до этой правки: он и есть «каким код был к этому часу».
+  rememberVersion(type, state.code[type] ?? templateCode(type));
+  state.code[type] = code;
+  (state.history ??= {})[type] = { length: code.length, data: editor.getDoc().getHistory() };
   saveState();
   updateHistoryButtons();
   updateTemplateButton();
@@ -227,10 +272,11 @@ function showView(view) {
   codeTab.setAttribute("aria-selected", String(!inForm));
   editor.getWrapperElement().hidden = inForm;
   formView.hidden = !inForm;
-  // Сниппеты и форматирование работают с текстом кода — в форме им нечего делать.
+  // Сниппеты, версии и форматирование работают с текстом кода — в форме им нечего делать.
   snippetsBtn.disabled = inForm;
+  versionsBtn.disabled = inForm;
   formatBtn.disabled = inForm;
-  closeSnippets();
+  closeMenus();
   if (inForm) {
     refreshForm();
   } else {
@@ -248,7 +294,11 @@ function applyTemplate() {
 // ниже использует остальной код.
 function insertSnippet(name) {
   editor.replaceRange(SNIPPETS[name].code + "\n\n", { line: 0, ch: 0 });
-  closeSnippets();
+  editor.focus();
+}
+
+function restoreVersion(version) {
+  editor.setValue(version.code);
   editor.focus();
 }
 
@@ -263,32 +313,64 @@ function formatCode() {
   editor.setCursor(Math.min(line, editor.lineCount() - 1));
 }
 
-/* ==== МЕНЮ СНИППЕТОВ ==== */
-function fillSnippetsMenu() {
-  for (const [name, { label }] of Object.entries(SNIPPETS)) {
-    const item = document.createElement("li");
-    item.setAttribute("role", "none");
-    const button = document.createElement("button");
-    button.type = "button";
-    button.setAttribute("role", "menuitem");
-    button.dataset.snippet = name;
-    button.textContent = label;
-    button.addEventListener("click", () => insertSnippet(name));
-    item.append(button);
-    snippetsMenu.append(item);
-  }
+/* ==== МЕНЮ ==== */
+// Выпадающее меню у кнопки: пункты строятся при открытии, меню закрывается выбором,
+// Esc и кликом мимо. Одно устройство на сниппеты и версии.
+const menuClosers = [];
+const closeMenus = () => menuClosers.forEach(close => close());
+
+function menuItem(label, onPick, disabled = false) {
+  const item = document.createElement("li");
+  item.setAttribute("role", "none");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("role", "menuitem");
+  button.textContent = label;
+  button.disabled = disabled;
+  button.addEventListener("click", () => {
+    closeMenus();
+    onPick();
+  });
+  item.append(button);
+  return item;
 }
 
-function closeSnippets() {
-  snippetsMenu.hidden = true;
-  snippetsBtn.setAttribute("aria-expanded", "false");
+function setupMenu(button, menu, items) {
+  const close = () => {
+    menu.hidden = true;
+    button.setAttribute("aria-expanded", "false");
+  };
+  menuClosers.push(close);
+  button.addEventListener("click", () => {
+    const opening = menu.hidden;
+    closeMenus();
+    if (!opening) return;
+    menu.replaceChildren(...items());
+    menu.hidden = false;
+    button.setAttribute("aria-expanded", "true");
+    menu.querySelector("button:not(:disabled)")?.focus();
+  });
+  menu.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    close();
+    button.focus();
+  });
+  document.addEventListener("click", event => {
+    if (!button.parentElement.contains(event.target)) close();
+  });
 }
 
-function toggleSnippets() {
-  const open = snippetsMenu.hidden;
-  snippetsMenu.hidden = !open;
-  snippetsBtn.setAttribute("aria-expanded", String(open));
-  if (open) snippetsMenu.querySelector("button").focus();
+const snippetItems = () => Object.entries(SNIPPETS).map(([name, { label }]) => {
+  const item = menuItem(label, () => insertSnippet(name));
+  item.firstElementChild.dataset.snippet = name;
+  return item;
+});
+
+// Свежие версии сверху; пустое меню честно говорит, когда появится первая.
+function versionItems() {
+  const list = [...(versions[state.widgetType] ?? [])].reverse();
+  if (!list.length) return [menuItem("Версий пока нет: первая появится при правке в новом часу", () => {}, true)];
+  return list.map(version => menuItem(versionLabel(version.at), () => restoreVersion(version)));
 }
 
 /* ==== ЖУРНАЛ ==== */
@@ -381,24 +463,15 @@ function bindControls() {
   undoBtn.addEventListener("click", () => editor.undo());
   redoBtn.addEventListener("click", () => editor.redo());
   templateBtn.addEventListener("click", applyTemplate);
-  snippetsBtn.addEventListener("click", toggleSnippets);
   formatBtn.addEventListener("click", formatCode);
   previewBtn.addEventListener("click", showPreview);
   permissionBtn.addEventListener("click", requestPermission);
   clearLogBtn.addEventListener("click", clearLog);
-  // Меню закрывается кликом мимо него и клавишей Esc, фокус возвращается на кнопку.
-  document.addEventListener("click", event => {
-    if (!event.target.closest(".snippets")) closeSnippets();
-  });
-  snippetsMenu.addEventListener("keydown", event => {
-    if (event.key !== "Escape") return;
-    closeSnippets();
-    snippetsBtn.focus();
-  });
+  setupMenu(snippetsBtn, snippetsMenu, snippetItems);
+  setupMenu(versionsBtn, versionsMenu, versionItems);
 }
 
 fillTypeSelect();
-fillSnippetsMenu();
 createEditor();
 bindControls();
 showView(state.view);

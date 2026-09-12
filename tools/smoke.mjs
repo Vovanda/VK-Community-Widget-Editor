@@ -23,6 +23,8 @@ const SHOTS = process.env.SMOKE_SHOTS;   // папка для скриншото
 const VK_FRAME_WIDTH = 650;
 const WIDTHS = [390, VK_FRAME_WIDTH, 768, 1200];
 
+const HOUR_MS = 60 * 60 * 1000;
+
 const problems = [];
 const check = (ok, what) => { if (!ok) problems.push(what); return ok; };
 
@@ -348,6 +350,34 @@ check(await code(page) === "return 42;", "группа без своего ко�
 const inheritWarning = await page.evaluate(() => document.getElementById("logList").textContent);
 check(inheritWarning.includes("другой группы"), "нет предупреждения, что общий код мог быть от другой группы");
 await page.context().close();
+
+/* ==== ВЕРСИИ ==== */
+// Часы подменяются: версия появляется на первой правке в новом часу, старше суток —
+// по одной на день. Выбор версии — обычная правка, её откатывает «Отменить».
+{
+  const context = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+  const versionsPage = await context.newPage();
+  versionsPage.on("pageerror", e => problems.push("ошибка скрипта: " + e.message));
+  await versionsPage.route(/cdnjs\.cloudflare\.com/, route => route.abort());
+  await versionsPage.clock.install({ time: new Date("2026-09-10T10:00:00") });
+  await versionsPage.goto(URL, { waitUntil: "load" });
+  await versionsPage.waitForSelector(".CodeMirror", { state: "attached" });
+  await setCode(versionsPage, "return 'v1';");
+  await setCode(versionsPage, "return 'v2';");
+  await versionsPage.clock.fastForward(HOUR_MS);
+  await setCode(versionsPage, "return 'v3';");
+  await versionsPage.clock.fastForward(26 * HOUR_MS);
+  await setCode(versionsPage, "return 'v4';");
+  await versionsPage.click("#versionsBtn");
+  const versionLabels = await versionsPage.locator("#versionsMenu [role=menuitem]").allTextContents();
+  console.log("версии:", versionLabels.join(" | "));
+  check(versionLabels.join() === "Сегодня 13:00,Вчера 11:00", "версии в меню не те: " + versionLabels.join(", "));
+  await versionsPage.click('#versionsMenu [role=menuitem] >> text="Вчера 11:00"');
+  check(await code(versionsPage) === "return 'v2';", "выбор версии не поставил её код");
+  await versionsPage.click("#undoBtn");
+  check(await code(versionsPage) === "return 'v4';", "«Отменить» не вернула код до выбора версии");
+  await context.close();
+}
 
 /* ==== ВНУТРИ VK (подделка) ==== */
 page = await openPage({ fakeVk: true, before: clearStorageOnce });
