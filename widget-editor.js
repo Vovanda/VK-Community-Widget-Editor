@@ -175,7 +175,7 @@ let editor;
 const docs = {};
 
 function templateCode(type) {
-  return widgetToCode(WIDGET_TYPES[type].template);
+  return templateToCode(type);
 }
 
 // История отмены хранится рядом с кодом, поэтому «Отменить» работает и после

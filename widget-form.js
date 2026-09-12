@@ -12,8 +12,20 @@ function widgetToCode(widget) {
   return "return " + JSON.stringify(widget, null, 2) + ";";
 }
 
+// Строки-комментарии над return: совет в шаблоне или пометки автора. Форма их не
+// показывает, но при правке пишет обратно — иначе первая же правка их стирала бы.
+function leadingComments(code) {
+  return code.match(/^(?:[ \t]*\/\/[^\n]*\n)*/)[0];
+}
+
+// Шаблон типа как код; совет типа (hint) встаёт комментарием первой строкой.
+function templateToCode(type) {
+  const { template, hint } = WIDGET_TYPES[type];
+  return (hint ? `// ${hint}\n` : "") + widgetToCode(template);
+}
+
 function readSimpleWidget(code) {
-  const match = code.trim().match(/^return\s+([\s\S]*?);?$/);
+  const match = code.slice(leadingComments(code).length).trim().match(/^return\s+([\s\S]*?);?$/);
   if (!match) return null;
   try {
     const widget = JSON.parse(match[1]);
@@ -462,7 +474,7 @@ function renderForm(container, type, code, writeCode, defaults = {}) {
     const start = el("button", "form-add form-start", "Начать с шаблона");
     start.type = "button";
     start.addEventListener("click", () => {
-      const template = widgetToCode(WIDGET_TYPES[type].template);
+      const template = templateToCode(type);
       // Свой шаг истории: иначе быстрый ввод после шаблона склеился бы с ним,
       // и «Отменить» сносила бы шаблон вместе с первой правкой.
       writeCode(template, "template");
@@ -473,7 +485,8 @@ function renderForm(container, type, code, writeCode, defaults = {}) {
   }
   const widget = readSimpleWidget(code);
   if (widget) {
-    renderWidgetForm(container, type, widget, writeCode, defaults);
+    const comments = leadingComments(code);
+    renderWidgetForm(container, type, widget, (next, origin) => writeCode(comments + next, origin), defaults);
     return;
   }
   const blocks = findBlocks(code, type);

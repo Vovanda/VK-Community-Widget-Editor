@@ -88,13 +88,27 @@ const typeValues = await page.evaluate(() => [...document.getElementById("widget
 check(typeValues[0] === "list", "первым в списке не List: " + typeValues[0]);
 check(typeValues.at(-1) === "text", "Text не последним в списке: " + typeValues.join(", "));
 // Форма Text собирается в отдельном контейнере, чтобы не трогать состояние страницы.
-const textFormLabels = await page.evaluate(() => {
+// Шаблон Text начинается с совета про List; форма обязана его прочесть и не стереть правкой.
+const textForm = await page.evaluate(() => {
   const box = document.createElement("div");
-  renderForm(box, "text", widgetToCode(WIDGET_TYPES.text.template), () => {}, {});
-  return [...box.querySelectorAll("label")].map(label => label.textContent.trim());
+  const writes = [];
+  const template = templateToCode("text");
+  renderForm(box, "text", template, code => writes.push(code), {});
+  const input = box.querySelector("input");
+  input.value = "Правка";
+  input.dispatchEvent(new Event("input"));
+  return {
+    template, listTemplate: templateToCode("list"),
+    labels: [...box.querySelectorAll("label")].map(label => label.textContent.trim()),
+    written: writes.at(-1) ?? "",
+  };
 });
-check(["Заголовок", "Текст", "Описание"].every(label => textFormLabels.some(t => t.startsWith(label))),
-  "форма Text без полей заголовка, текста или описания: " + textFormLabels.join(", "));
+check(textForm.template.startsWith("// Совет: List"), "шаблон Text без совета про List: " + textForm.template.split("\n")[0]);
+check(!textForm.listTemplate.startsWith("//"), "совет попал в шаблон List");
+check(["Заголовок", "Текст", "Описание"].every(label => textForm.labels.some(t => t.startsWith(label))),
+  "форма Text без полей заголовка, текста или описания: " + textForm.labels.join(", "));
+check(textForm.written.startsWith("// Совет: List") && textForm.written.includes("Правка"),
+  "правка в форме Text стёрла совет или не записалась: " + textForm.written.slice(0, 80));
 
 // Шаблон каждого типа обязан проходить схему из доки VK: иначе «Шаблон» подсовывает виджет, который VK не примет.
 const templateProblems = await page.evaluate(() => Object.keys(WIDGET_TYPES)
