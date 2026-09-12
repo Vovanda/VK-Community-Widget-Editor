@@ -1,4 +1,4 @@
-//VKScript
+// === Случайность: случайные друзья донорского профиля ===
 var count_of_randoms = 2;
 var resp = API.friends.get({ user_id: 3972090, order: "random", count: count_of_randoms });
 var rnd_ids = resp.items;
@@ -61,8 +61,13 @@ var info = [
 	{"title":"Что нужно знать будущим владельцам ВЕО?","text":"Вся важная информация о выборе щенка, уходе и здоровье в нашей статье!","button":"Читать","button_url":"https://vk.cc/cPXU7i"}
 ];
 
+// === Сообщество ===
+var group_info = API.groups.getById();
+if (group_info.groups) group_info = group_info.groups;
+var group_id = group_info[0].id;
+
 // === Проверка членства ===
-var is_member = API.groups.isMember({"group_id":"79230415","user_id":Args.uid});
+var is_member = API.groups.isMember({"group_id":group_id,"user_id":Args.uid});
 
 // === Случайный выбор темы через rnd_values[0] ===
 var chosen_topic;
@@ -86,11 +91,10 @@ var stub_item = {
     "title": "Рады Вас видеть",
     "button": "",
     "button_url": "",
-    "icon_id": "club79230415",
     "text": "Приятного просмотра!"
 };
 
-var result_item = stub_item + chosen_topic[msg_index];
+var result_item = stub_item + {"icon_id": "club" + group_id} + chosen_topic[msg_index];
 
 // === Заглушка приветствия пользователя ===
 var user = API.users.get({"user_ids":Args.uid,"fields":"timezone,last_seen"})[0];

@@ -1,19 +1,6 @@
-//VKScript
 var user = API.users.get({"user_ids":Args.uid,"fields":"timezone,last_seen"})[0];
-//var count_of_randoms = 2;
-//var resp = API.friends.get({ user_id: 3972090, order: "random", count: count_of_randoms });
-//var rnd_ids = resp.items;
-//
-//var rnd_values = [];
-//var i = 0;
-//while (i < count_of_randoms) {
-//    var id = parseInt(rnd_ids[i]) % 1000000;  // сводим к 32-бит числу
-//    var h = (id * 1664525 + 1013904223) % 1000000; 
-//    rnd_values.push(h / 1000000);
-//    i = i + 1;
-//}
 
-// Генерация двух псевдослучайных чисел 0..1 на основе last_seen.time 
+// === Случайность: время последнего визита посетителя ===
 var base = user.last_seen.time;
 var rnd_values = [ ((base * 9301 + 49297) % 233280) / 233280, ((base * 49297 + 9301) % 233280) / 233280 ];
 
@@ -60,8 +47,14 @@ var info = [
     {"title":"Где почитать правила оформления?","text":"Читайте статью, чтобы узнать правила оформления объявлений.","button":"Посмотреть статью","button_url":"https://vk.ru/@veopuppy-posting-rules"},
     {"title":"Какие инструкции доступны?","text":"Подробная инструкция доступна в статье группы.","button":"Читать инструкцию","button_url":"https://vk.ru/@veopuppy-posting-rules"}
 ];
+
+// === Сообщество ===
+var group_info = API.groups.getById();
+if (group_info.groups) group_info = group_info.groups;
+var group_id = group_info[0].id;
+
 // === Проверка членства ===
-var is_member = API.groups.isMember({"group_id":"139618442","user_id":Args.uid});
+var is_member = API.groups.isMember({"group_id":group_id,"user_id":Args.uid});
 
 // === Случайный выбор темы через rnd_values[0] ===
 var chosen_topic;
@@ -85,11 +78,10 @@ var stub_item = {
     "title": "Рады Вас видеть",
     "button": "",
     "button_url": "",
-    "icon_id": "club139618442",
     "text": "Приятного просмотра!"
 };
 
-var result_item = stub_item + chosen_topic[msg_index];
+var result_item = stub_item + {"icon_id": "club" + group_id} + chosen_topic[msg_index];
 
 // === Заглушка приветствия пользователя ===
 var greeting = "Доброго времени суток, ";
