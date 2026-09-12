@@ -137,6 +137,20 @@ function blockProblems(block) {
   return problems;
 }
 
+/* ==== РАСКЛАДКА ==== */
+// Сколько колонок из шести занимает поле: связанные поля встают парами, заголовок,
+// описание и текст — на всю ширину. Числа по умолчанию — половина.
+const FIELD_SPANS = {
+  title_url: 3, title_counter: 3, more: 3, more_url: 3,
+  button: 3, button_url: 3, link: 3, link_url: 3, address: 3, time: 3,
+  icon_id: 3, cover_id: 3, url: 3, text_url: 3, live_url: 3, currency: 3,
+  start: 3, end: 3, goal: 2, funded: 2, backers: 2, event: 4, minute: 2, align: 2,
+};
+const fieldSpan = (key, field) => FIELD_SPANS[key] ?? (field.kind === "integer" ? 3 : 6);
+
+// Длинный список сразу раскрытым — простыня: карточки свёрнуты, если их больше трёх.
+const CARDS_OPEN_UP_TO = 3;
+
 /* ==== ПОЛЯ ==== */
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -149,19 +163,21 @@ const fieldLabel = key => FIELD_LABELS[key] ?? String(key);
 const joinPath = (path, key) => (path === "" ? String(key) : path + "." + key);
 const fieldId = path => "field-" + path.replace(/[^\w]/g, "-");
 
-// Длинный текст, в котором VK допускает переносы, правится в многострочном поле.
+// Переносы строк VK разрешает только в тексте строки списка — там многострочное поле.
 const isLongText = field => field.kind === "string" && !field.oneLine && (field.max ?? 0) >= 200;
 
 // Значение нового поля или элемента. Новый элемент повторяет набор полей соседа:
 // у VK кнопки и иконки должны быть у всех элементов списка или ни у одного.
-function emptyValue(field, sibling) {
+// Некоторые поля имеют осмысленное значение по умолчанию — иконка сообщества.
+function emptyValue(field, sibling, key, defaults) {
+  if (field.kind === "string" && key != null && key in defaults) return defaults[key];
   switch (field.kind) {
     case "integer": return 0;
     case "enum": return field.values[0];
-    case "array": return sibling ? sibling.map(item => emptyValue(field.of, item)) : [];
+    case "array": return sibling ? sibling.map(item => emptyValue(field.of, item, null, defaults)) : [];
     case "object": {
-      const keys = Object.keys(field.fields).filter(key => field.fields[key].required || (sibling && key in sibling));
-      return Object.fromEntries(keys.map(key => [key, emptyValue(field.fields[key], sibling?.[key])]));
+      const keys = Object.keys(field.fields).filter(k => field.fields[k].required || (sibling && k in sibling));
+      return Object.fromEntries(keys.map(k => [k, emptyValue(field.fields[k], sibling?.[k], k, defaults)]));
     }
     default: return "";
   }
@@ -175,7 +191,7 @@ function renderInput(value, field, path, onValue) {
   } else {
     input = el(isLongText(field) ? "textarea" : "input");
     if (field.kind === "integer") input.type = "number";
-    if (isLongText(field)) input.rows = 3;
+    if (isLongText(field)) input.rows = 2;
   }
   input.value = value;
   input.id = fieldId(path);
@@ -184,16 +200,23 @@ function renderInput(value, field, path, onValue) {
   return input;
 }
 
-function removeButton(label, onClick) {
-  const button = el("button", "form-remove");
+// Кнопка-иконка. Внутри заголовка карточки клик не должен сворачивать карточку.
+function iconButton(icon, label, className, onClick, disabled = false) {
+  const button = el("button", className);
   button.type = "button";
+  button.disabled = disabled;
   button.setAttribute("aria-label", label);
-  const icon = el("i", "fa fa-xmark");
-  icon.setAttribute("aria-hidden", "true");
-  button.append(icon);
-  button.addEventListener("click", onClick);
+  const glyph = el("i", "fa " + icon);
+  glyph.setAttribute("aria-hidden", "true");
+  button.append(glyph);
+  button.addEventListener("click", event => {
+    event.preventDefault();
+    onClick();
+  });
   return button;
 }
+
+const removeButton = (label, onClick) => iconButton("fa-xmark", label, "form-remove", onClick);
 
 function renderEntry(obj, key, field, path, ctx) {
   const remove = field.required ? null
@@ -206,12 +229,14 @@ function renderEntry(obj, key, field, path, ctx) {
     return group;
   }
   if (field.kind === "array") return renderArray(obj[key], field, fieldLabel(key), path, ctx, remove);
-  const row = el("div", "form-field");
+  const cell = el("div", "form-field span-" + fieldSpan(key, field));
+  const head = el("div", "form-field-head");
   const label = el("label", "form-label", fieldLabel(key));
   label.htmlFor = fieldId(path);
-  row.append(label, renderInput(obj[key], field, path, value => { obj[key] = value; ctx.commit(); }));
-  if (remove) row.append(remove);
-  return row;
+  head.append(label);
+  if (remove) head.append(remove);
+  cell.append(head, renderInput(obj[key], field, path, value => { obj[key] = value; ctx.commit(); }));
+  return cell;
 }
 
 function renderAddField(obj, fields, missing, path, ctx) {
@@ -222,7 +247,7 @@ function renderAddField(obj, fields, missing, path, ctx) {
   for (const key of missing) select.add(new Option(fieldLabel(key), key));
   select.addEventListener("change", () => {
     if (!select.value) return;
-    obj[select.value] = emptyValue(fields[select.value]);
+    obj[select.value] = emptyValue(fields[select.value], undefined, select.value, ctx.defaults);
     ctx.restructure();
   });
   return select;
@@ -253,29 +278,56 @@ function renderItem(items, index, field, path, ctx) {
   return renderInput(items[index], field, path, value => { items[index] = value; ctx.commit(); });
 }
 
+// Подпись свёрнутой карточки — номер и то, по чему элемент узнают.
+function cardTitle(item, index) {
+  const text = item && typeof item === "object" && !Array.isArray(item)
+    ? item.title ?? item.name ?? item.text ?? "" : "";
+  return `${index + 1}. ${text}`.trim();
+}
+
+function moveItem(items, from, to, ctx) {
+  [items[from], items[to]] = [items[to], items[from]];
+  ctx.restructure();
+}
+
+function renderCard(items, index, field, label, path, ctx) {
+  const item = items[index];
+  const card = el("details", "form-card");
+  card.open = ctx.isOpen(item, items.length);
+  card.addEventListener("toggle", () => ctx.setOpen(item, card.open));
+  const summary = el("summary", "form-card-head");
+  const actions = el("span", "form-card-actions");
+  actions.append(
+    iconButton("fa-arrow-up", `Поднять: ${label}, ${index + 1}`, "form-move form-move-up",
+      () => moveItem(items, index, index - 1, ctx), index === 0),
+    iconButton("fa-arrow-down", `Опустить: ${label}, ${index + 1}`, "form-move form-move-down",
+      () => moveItem(items, index, index + 1, ctx), index === items.length - 1),
+    removeButton(`Удалить: ${label}, ${index + 1}`, () => { items.splice(index, 1); ctx.restructure(); }),
+  );
+  summary.append(el("span", "form-card-title", cardTitle(item, index)), actions);
+  card.append(summary, renderItem(items, index, field.of, joinPath(path, index), ctx));
+  return card;
+}
+
+// «Добавить» стоит в шапке списка и кладёт элемент первым: в длинном списке
+// новый не приходится искать в конце.
 function renderArray(items, field, label, path, ctx, remove) {
   const section = el("section", "form-array");
   const head = el("div", "form-array-head");
-  head.append(el("h3", null, label), el("span", "form-count", field.max ? `${items.length} из ${field.max}` : String(items.length)));
-  if (remove) head.append(remove);
-  section.append(head);
-  items.forEach((item, index) => {
-    const card = el("div", "form-card");
-    const cardHead = el("div", "form-card-head");
-    cardHead.append(el("span", null, String(index + 1)),
-      removeButton(`Удалить: ${label}, ${index + 1}`, () => { items.splice(index, 1); ctx.restructure(); }));
-    card.append(cardHead, renderItem(items, index, field.of, joinPath(path, index), ctx));
-    section.append(card);
-  });
   const add = el("button", "form-add", "Добавить");
   add.type = "button";
   add.dataset.path = path;
   add.disabled = field.max !== undefined && items.length >= field.max;
   add.addEventListener("click", () => {
-    items.push(emptyValue(field.of, items[items.length - 1]));
+    const item = emptyValue(field.of, items[0], null, ctx.defaults);
+    items.unshift(item);
+    ctx.setOpen(item, true);
     ctx.restructure();
   });
-  section.append(add);
+  head.append(el("h3", null, label), el("span", "form-count", field.max ? `${items.length} из ${field.max}` : String(items.length)), add);
+  if (remove) head.append(remove);
+  section.append(head);
+  items.forEach((item, index) => section.append(renderCard(items, index, field, label, path, ctx)));
   return section;
 }
 
@@ -284,11 +336,37 @@ function renderProblems(list, problems) {
   list.replaceChildren(...problems.map(text => el("li", null, text)));
 }
 
+// Состояние раскрытия карточек держится по самим элементам: при перестановке
+// раскрытая карточка остаётся раскрытой. Без явного выбора короткий список раскрыт.
+function openState() {
+  const open = new Map();
+  return {
+    isOpen: (item, count) => (open.has(item) ? open.get(item) : count <= CARDS_OPEN_UP_TO),
+    setOpen: (item, value) => {
+      if (item && typeof item === "object") open.set(item, value);
+    },
+  };
+}
+
+function formBar(container) {
+  const bar = el("div", "form-bar");
+  const toggleAll = open => () => container.querySelectorAll("details").forEach(details => { details.open = open; });
+  const collapse = el("button", "form-bar-button form-collapse-all", "Свернуть все");
+  const expand = el("button", "form-bar-button form-expand-all", "Развернуть все");
+  collapse.type = expand.type = "button";
+  collapse.addEventListener("click", toggleAll(false));
+  expand.addEventListener("click", toggleAll(true));
+  bar.append(collapse, expand);
+  return bar;
+}
+
 // Правка значения пишет код и обновляет список нарушений, форму не перерисовывает —
-// иначе поле теряло бы фокус на каждой букве. Добавление и удаление перерисовывают.
-function renderWidgetForm(container, type, widget, writeCode) {
+// иначе поле теряло бы фокус на каждой букве. Добавление, удаление и перестановка перерисовывают.
+function renderWidgetForm(container, type, widget, writeCode, defaults) {
   const problems = el("ul", "form-problems");
   const ctx = {
+    ...openState(),
+    defaults,
     commit() {
       writeCode(widgetToCode(widget));
       renderProblems(problems, validateWidget(type, widget));
@@ -299,7 +377,7 @@ function renderWidgetForm(container, type, widget, writeCode) {
     },
   };
   function draw() {
-    container.replaceChildren(renderObject(widget, WIDGET_TYPES[type].fields, "", ctx), problems);
+    container.replaceChildren(formBar(container), renderObject(widget, WIDGET_TYPES[type].fields, "", ctx), problems);
     renderProblems(problems, validateWidget(type, widget));
   }
   draw();
@@ -308,8 +386,9 @@ function renderWidgetForm(container, type, widget, writeCode) {
 // Каждый блок — своя область. Правка меняет только литерал блока; после неё
 // позиции всех литералов сдвигаются, поэтому они пересчитываются по новому коду,
 // а значения остаются теми же объектами, к которым привязаны поля.
-function renderBlocksForm(container, type, code, blocks, writeCode) {
+function renderBlocksForm(container, type, code, blocks, writeCode, defaults) {
   let current = code;
+  const cards = openState();
   const syncRanges = () => {
     const ranges = new Map(literalDeclarations(current).map(d => [d.name, d]));
     for (const block of blocks) Object.assign(block, { start: ranges.get(block.name).start, end: ranges.get(block.name).end });
@@ -324,6 +403,8 @@ function renderBlocksForm(container, type, code, blocks, writeCode) {
     const body = el("div", "form-block-body");
     const problems = el("ul", "form-problems");
     const ctx = {
+      ...cards,
+      defaults,
       commit() {
         current = current.slice(0, block.start) + literalToCode(block.value) + current.slice(block.end);
         writeCode(current);
@@ -345,19 +426,19 @@ function renderBlocksForm(container, type, code, blocks, writeCode) {
     area.append(summary, body);
     return area;
   });
-  container.replaceChildren(el("p", "form-note",
-    "Скрипт: в форме блоки данных, логика остаётся в коде и не меняется."), ...areas);
+  container.replaceChildren(formBar(container),
+    el("p", "form-note", "Скрипт: в форме блоки данных, логика остаётся в коде и не меняется."), ...areas);
 }
 
-function renderForm(container, type, code, writeCode) {
+function renderForm(container, type, code, writeCode, defaults = {}) {
   const widget = readSimpleWidget(code);
   if (widget) {
-    renderWidgetForm(container, type, widget, writeCode);
+    renderWidgetForm(container, type, widget, writeCode, defaults);
     return;
   }
   const blocks = findBlocks(code, type);
   if (blocks?.length) {
-    renderBlocksForm(container, type, code, blocks, writeCode);
+    renderBlocksForm(container, type, code, blocks, writeCode, defaults);
     return;
   }
   container.replaceChildren(el("p", "form-refusal",

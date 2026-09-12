@@ -26,7 +26,6 @@
   --gap: 8px;
   --pad: 20px;
   --editor-height: clamp(320px, 60vh, 640px);
-  --label-width: 9.5em;
 
   --font-ui: -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", Arial, sans-serif;
   --font-code: Consolas, "SF Mono", Menlo, monospace;
@@ -217,6 +216,7 @@ button:focus-visible,
 select:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
+summary:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -273,10 +273,10 @@ a:focus-visible {
 .form-view {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 10px;
   height: var(--editor-height);
   overflow: auto;
-  padding: 12px;
+  padding: 10px 12px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 0 0 var(--radius) var(--radius);
@@ -287,20 +287,61 @@ a:focus-visible {
   display: none;
 }
 
+.form-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.form-bar-button {
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.form-bar-button:hover {
+  color: var(--text);
+}
+
+/* Поля лежат в сетке на шесть колонок: подпись над полем, связанные поля парами
+   (span-3), числа тройками (span-2). Вложенные группы и списки — во всю ширину. */
 .form-object {
   display: grid;
-  gap: var(--gap);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px 10px;
 }
+
+.form-object > .form-group,
+.form-object > .form-array,
+.form-object > .form-add-field {
+  grid-column: 1 / -1;
+}
+
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: span 3; }
+.span-4 { grid-column: span 4; }
+.span-6 { grid-column: span 6; }
 
 .form-field {
   display: grid;
-  grid-template-columns: var(--label-width) minmax(0, 1fr) auto;
-  gap: var(--gap);
+  gap: 2px;
+  min-width: 0;
+}
+
+.form-field-head {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  font-size: 0.875rem;
+  gap: 4px;
+  min-height: 20px;
 }
 
 .form-label {
+  font-size: 0.8125rem;
   color: var(--text-muted);
 }
 
@@ -314,18 +355,22 @@ a:focus-visible {
   background: var(--surface-alt);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 6px 8px;
+  padding: 5px 8px;
 }
 
 .form-view textarea {
   resize: vertical;
 }
 
+.form-add-field {
+  justify-self: start;
+}
+
 .form-group {
   display: grid;
   gap: var(--gap);
   margin: 0;
-  padding: 8px 10px 10px;
+  padding: 6px 10px 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
@@ -341,12 +386,12 @@ a:focus-visible {
 
 .form-array {
   display: grid;
-  gap: var(--gap);
+  gap: 6px;
 }
 
 .form-array-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--gap);
 }
 
@@ -360,36 +405,16 @@ a:focus-visible {
   color: var(--text-muted);
 }
 
-.form-card {
-  display: grid;
-  gap: var(--gap);
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-}
-
-.form-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-}
-
-.form-add,
-.form-remove {
+.form-add {
+  margin-left: auto;
   font: inherit;
   font-size: 0.8125rem;
+  color: var(--accent);
   background: var(--surface-alt);
   border: 0;
   border-radius: var(--radius);
-  padding: 5px 10px;
+  padding: 4px 10px;
   cursor: pointer;
-}
-
-.form-add {
-  justify-self: start;
-  color: var(--accent);
 }
 
 .form-add:disabled {
@@ -397,18 +422,85 @@ a:focus-visible {
   cursor: not-allowed;
 }
 
+/* Свёрнутые области и карточки: у summary с display: flex Chrome прячет родной
+   треугольник, поэтому стрелка своя и поворачивается у раскрытых. */
+.form-block > summary,
+.form-card > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  list-style: none;
+  cursor: pointer;
+}
+
+.form-block > summary::-webkit-details-marker,
+.form-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.form-block > summary::before,
+.form-card > summary::before {
+  content: "▸";
+  color: var(--text-muted);
+}
+
+.form-block[open] > summary::before,
+.form-card[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.form-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.form-card-head {
+  padding: 4px 6px 4px 10px;
+  font-size: 0.875rem;
+}
+
+.form-card[open] > .form-card-head {
+  border-bottom: 1px solid var(--line);
+}
+
+.form-card-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-card-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.form-card > .form-object {
+  padding: 8px 10px 10px;
+}
+
+.form-move,
 .form-remove {
+  font: inherit;
+  font-size: 0.8125rem;
   color: var(--text-muted);
   background: none;
-  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--radius);
+  padding: 3px 6px;
+  cursor: pointer;
 }
 
+.form-move:hover:not(:disabled),
 .form-remove:hover {
   color: var(--text);
+  background: var(--surface-alt);
 }
 
-.form-add-field {
-  justify-self: start;
+.form-move:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .form-problems {
@@ -440,13 +532,9 @@ a:focus-visible {
 }
 
 .form-block-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--gap);
   padding: 8px 10px;
   font-size: 0.9375rem;
   font-weight: 600;
-  cursor: pointer;
 }
 
 .form-block[open] > .form-block-head {
@@ -454,6 +542,7 @@ a:focus-visible {
 }
 
 .form-block-name {
+  margin-left: auto;
   font-family: var(--font-code);
   font-size: 0.8125rem;
   font-weight: 400;
@@ -553,7 +642,7 @@ a:focus-visible {
 
 /* ==== ТЕЛЕФОН ==== */
 /* В мобильном VK приложение открывается на всю ширину: поля вокруг карточки
-   там только съедают место под код, а подпись поля встаёт над ним. */
+   там только съедают место под код, а пары полей встают друг под другом. */
 @media (max-width: 600px) {
   .app {
     margin: 0;
@@ -561,11 +650,7 @@ a:focus-visible {
     border-radius: 0;
   }
 
-  .form-field {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .form-label {
+  .form-object > .form-field {
     grid-column: 1 / -1;
   }
 }

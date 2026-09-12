@@ -161,8 +161,12 @@ function writeCodeFromForm(code) {
   formWriting = false;
 }
 
+// Иконка нового элемента — главное фото текущего сообщества (формат club<id> из доки VK),
+// а не пользователя: виджет висит в сообществе.
+const FORM_DEFAULTS = { icon_id: GROUP_ID ? "club" + GROUP_ID : "" };
+
 function refreshForm() {
-  renderForm(formView, state.widgetType, editor.getValue(), writeCodeFromForm);
+  renderForm(formView, state.widgetType, editor.getValue(), writeCodeFromForm, FORM_DEFAULTS);
 }
 
 function showView(view) {

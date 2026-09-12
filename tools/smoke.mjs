@@ -48,7 +48,7 @@ async function openPage({ fakeVk, before, beforeArg, colorScheme = "light", url 
   }
   if (before) await page.addInitScript(before, beforeArg);
   await page.goto(url, { waitUntil: "load" });
-  await page.waitForSelector(".CodeMirror");
+  await page.waitForSelector(".CodeMirror", { state: "attached" });
   return page;
 }
 
@@ -183,6 +183,8 @@ const blockRange = (source, name) => page.evaluate(([s, n]) => {
   const block = findBlocks(s, "list").find(b => b.name === n);
   return [block.start, block.end, Array.isArray(block.value) ? block.value.length : 1];
 }, [source, name]);
+// Карточки длинных списков свёрнуты: разворачиваем все, чтобы добраться до полей.
+await page.click("#formView .form-expand-all");
 const beforeEdit = await code(page);
 const [engStart, engEnd] = await blockRange(beforeEdit, "engagement");
 await page.locator('#formView [data-path="engagement.0.title"]').fill("Лайкните пост!");
@@ -193,8 +195,53 @@ check(beforeEdit.slice(0, engStart) === afterEdit.slice(0, engStart2) && beforeE
   "правка engagement задела код вне его литерала");
 const [, , salesBefore] = await blockRange(afterEdit, "sales");
 await page.click('#formView .form-block[data-name="sales"] .form-add');
-const [, , salesAfter] = await blockRange(await code(page), "sales");
+const salesCode = await code(page);
+const [, , salesAfter] = await blockRange(salesCode, "sales");
 check(salesAfter === salesBefore + 1, `«Добавить» в sales: было ${salesBefore}, стало ${salesAfter}`);
+
+/* ==== УДОБСТВО ФОРМЫ ==== */
+const blockTitles = (source, name) => page.evaluate(([s, n]) =>
+  findBlocks(s, "list").find(b => b.name === n).value.map(item => item.title), [source, name]);
+// Новый элемент встаёт первым, чтобы его не искать в конце длинного списка.
+check((await blockTitles(salesCode, "sales"))[0] === "", "новый элемент sales не первый");
+
+// ↓ у первого элемента меняет его местами со вторым.
+const engBeforeMove = await blockTitles(await code(page), "engagement");
+await page.click('#formView .form-block[data-name="engagement"] .form-card .form-move-down');
+const engAfterMove = await blockTitles(await code(page), "engagement");
+check(engAfterMove[0] === engBeforeMove[1] && engAfterMove[1] === engBeforeMove[0],
+  "↓ не поменял элементы местами: " + engAfterMove.slice(0, 2).join(" | "));
+
+await page.click("#formView .form-collapse-all");
+check(await page.evaluate(() => [...document.querySelectorAll("#formView details")].every(d => !d.open)),
+  "«Свернуть все» свернула не всё");
+await page.click("#formView .form-expand-all");
+check(await page.evaluate(() => [...document.querySelectorAll("#formView details")].every(d => d.open)),
+  "«Развернуть все» раскрыла не всё");
+
+// На ширине фрейма VK связанные поля стоят парой: кнопка и её ссылка в одной строке.
+await page.setViewportSize({ width: VK_FRAME_WIDTH, height: 900 });
+const pairGap = await page.evaluate(() => {
+  const top = path => document.querySelector(`#formView [data-path="${path}"]`).getBoundingClientRect().top;
+  return Math.abs(top("sales.1.button") - top("sales.1.button_url"));
+});
+check(pairGap <= 2, "на 650px «Кнопка» и «Ссылка кнопки» не в одной строке: разница " + pairGap + "px");
+if (SHOTS) {
+  await page.click("#formView .form-collapse-all");
+  await page.click('#formView .form-block[data-name="sales"] > summary');
+  await page.click('#formView .form-block[data-name="sales"] .form-card:nth-of-type(2) > summary');
+  await page.screenshot({ path: `${SHOTS}/blocks-${VK_FRAME_WIDTH}.png` });
+}
+await page.setViewportSize({ width: 1200, height: 900 });
+
+// Иконка новой строки — фото текущего сообщества, а не пользователя.
+await page.goto(URL + "?group_id=777", { waitUntil: "load" });
+await page.waitForSelector(".CodeMirror", { state: "attached" });
+await page.selectOption("#widgetType", "list");
+await page.click("#formTab");
+await page.click("#templateBtn");
+await page.selectOption('#formView .form-add-field[data-path="rows.0"]', "icon_id");
+check((await code(page)).includes('"icon_id": "club777"'), "новый icon_id не club777 при group_id=777");
 await page.click("#codeTab");
 
 /* ==== ФОРМАТИРОВАНИЕ ==== */
@@ -210,7 +257,7 @@ check(await code(page) === formatted, "повторное форматирова
 /* ==== ПАМЯТЬ ==== */
 await setCode(page, "return {\"title\":\"после перезагрузки\"};");
 await page.reload({ waitUntil: "load" });
-await page.waitForSelector(".CodeMirror");
+await page.waitForSelector(".CodeMirror", { state: "attached" });
 check((await code(page)).includes("после перезагрузки"), "код не пережил перезагрузку");
 await page.context().close();
 
@@ -236,7 +283,7 @@ await page.context().close();
 // У каждой группы свой код: общий слот на тип подсовывал в одну группу скрипт другой.
 const openGroup = async id => {
   await page.goto(URL + "?group_id=" + id, { waitUntil: "load" });
-  await page.waitForSelector(".CodeMirror");
+  await page.waitForSelector(".CodeMirror", { state: "attached" });
 };
 page = await openPage({ url: URL + "?group_id=111", before: clearStorageOnce });
 await setCode(page, 'return {"title":"группа 111","rows":[]};');
