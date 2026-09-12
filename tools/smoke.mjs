@@ -26,8 +26,8 @@ const check = (ok, what) => { if (!ok) problems.push(what); return ok; };
 
 const browser = await chromium.launch(process.env.SMOKE_CHROME ? { executablePath: process.env.SMOKE_CHROME } : {});
 
-async function openPage({ fakeVk, before } = {}) {
-  const context = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+async function openPage({ fakeVk, before, colorScheme = "light" } = {}) {
+  const context = await browser.newContext({ viewport: { width: 1200, height: 900 }, colorScheme });
   const page = await context.newPage();
   page.on("pageerror", e => problems.push("ошибка скрипта: " + e.message));
   if (fakeVk) {
@@ -147,6 +147,25 @@ for (const width of WIDTHS) {
   console.log("ширина " + width + ": вылет " + overflow + "px");
   check(overflow <= 1, "на " + width + "px страница уезжает вбок на " + overflow + "px");
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/width-${width}.png`, fullPage: true });
+}
+
+/* ==== ТЕМЫ ==== */
+// Тёмная тема берётся из настройки системы: фон обязан смениться целиком, иначе
+// в тёмном VK останется белая карточка.
+const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+console.log("светлая тема:", lightBg);
+check(lightBg === "rgb(235, 237, 240)", "светлая тема не покрасила фон: " + lightBg);
+await page.context().close();
+
+page = await openPage({ fakeVk: true, colorScheme: "dark", before: clearStorageOnce });
+const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+console.log("тёмная тема:", darkBg);
+check(darkBg === "rgb(10, 10, 10)", "тёмная тема не покрасила фон: " + darkBg);
+if (SHOTS) {
+  for (const width of [390, 1200]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.screenshot({ path: `${SHOTS}/dark-width-${width}.png`, fullPage: true });
+  }
 }
 
 await browser.close();
